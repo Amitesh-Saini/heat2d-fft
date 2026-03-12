@@ -1,0 +1,7 @@
+output/figures/NOTES.txt
+Responsibility:
+  Directory for generated plots, animations, and presentation figures.
+What to do here:
+  - Save PNG/PDF figures and optional GIF/MP4 animations here.
+  - Keep generated visuals separate from raw numerical data.
+

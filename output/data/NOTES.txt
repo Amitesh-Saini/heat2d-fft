@@ -1,0 +1,7 @@
+output/data/NOTES.txt
+Responsibility:
+  Directory for CSV solution snapshots, coordinate vectors, and run summaries.
+What to do here:
+  - Save x.csv, y.csv, u_t_*.csv, exact_t_*.csv, and error_t_*.csv.
+  - Keep generated numerical data out of source folders.
+

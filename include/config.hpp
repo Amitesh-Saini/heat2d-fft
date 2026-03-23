@@ -1,13 +1,12 @@
 #pragma once
 // config.hpp
 // Responsibility:
-//   Central place for run configuration and preset experiment choices.
-// What to do here:
-//   - Store default grid size, alpha, output times, and selected initial condition.
-//   - Keep main.cpp thin by constructing configuration here.
-//   - Expand later if you add command-line parsing.
+//   Defines helper utilities for constructing default solver configurations.
+// Notes:
+//   - Keeps main.cpp thin by centralizing default parameter choices.
+//   - Extend this later if you add command-line parsing or experiment presets.
 
 #include "heat2d_fourier.hpp"
 
-Heat2DConfig default_heat2d_config();
-
+// Returns a default configuration for the 2D Fourier heat solver.
+Heat2DConfig make_default_heat2d_config();

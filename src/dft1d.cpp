@@ -3,6 +3,8 @@
 
 constexpr Real PI = 3.14159265358979323846;
 
+
+
 // dft1d.cpp
 // Responsibility:
 //   Implementation file for the direct 1D DFT/IDFT.
@@ -11,46 +13,53 @@ constexpr Real PI = 3.14159265358979323846;
 //   - Match the exact sign and normalization conventions used by your FFT.
 //   - Use this as a trusted small-N reference.
 
-ComplexVec dft_1d(const ComplexVec& input) {
-    
-    std::size_t N = input.size();
-    ComplexVec output(N);
-    
-    for(std::size_t k = 0; k < N; k++){
 
-        Complex omega = {std::cos(2*PI*k/N), (-std::sin(2*PI*k/N))};
-        Complex phase = {1.0 , 0.0};
 
-        for(std::size_t j = 0; j < N; j++){
-            
-            output[k] += input[j] * phase;
-            phase *= omega;
+namespace{
+
+    enum class DFTDirection {
+        Forward,
+        Inverse
+    };
+
+    ComplexVec dft_1d_kernel(const ComplexVec& input, DFTDirection dir) {
+
+        std::size_t N = input.size();
+        ComplexVec output(N);
+
+        Real sign = (dir == DFTDirection::Forward) ? -1.0 : 1.0;
+        
+        for(std::size_t k = 0; k < N; k++){
+
+            Complex omega = {std::cos(2*PI*k/N), (sign * std::sin(2*PI*k/N))};
+            Complex phase = {1.0 , 0.0};
+
+            for(std::size_t j = 0; j < N; j++){
+                
+                output[k] += input[j] * phase;
+                phase *= omega;
+            }
         }
+        
+        return output;
     }
+}
 
-    return output;
+
+ComplexVec dft_1d(const ComplexVec& input) {
+
+    return dft_1d_kernel(input, DFTDirection::Forward);
 }
 
 ComplexVec idft_1d(const ComplexVec& input) {
 
     std::size_t N = input.size();
-    ComplexVec output(N);
+
+    ComplexVec output = dft_1d_kernel(input, DFTDirection::Inverse);
     
-    for(std::size_t j = 0; j < N; j++){
-
-        Complex sum = {0.0 , 0.0};
-        Complex omega = {std::cos(2*PI*j/N), std::sin(2*PI*j/N)};
-        Complex phase = {1.0 , 0.0};
-
-        for(std::size_t k = 0; k < N; k++){
-            
-            sum += input[k] * phase;
-            phase *= omega;
-        }
-
-        output[j] = sum / static_cast<Real>(N);
+    for(std::size_t a = 0; a < N; a++){
+        output[a] = output[a] / static_cast<Real>(N);
     }
 
     return output;
 }
-

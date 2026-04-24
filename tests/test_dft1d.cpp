@@ -14,312 +14,14 @@
 #include <vector>
 #include <string>
 #include <numeric>
-#include "dft1d.hpp"
-#include "types.hpp"
 #include <stdexcept>
 
 
 #include "dft1d.hpp"
-#include <string>
+#include "types.hpp"
+#include "1D_test_utils.hpp"
 
-// Returns true if two complex numbers are approximately equal
-// within combined absolute/relative tolerances.
-//
-// What it checks:
-//   |a - b| <= abs_tol + rel_tol * max(|a|, |b|)
-//
-// Why this is needed:
-//   Floating-point arithmetic introduces small roundoff error,
-//   so exact equality is usually the wrong criterion for
-//   transform outputs.
 
-
-bool approx_equal_complex(const Complex& a, const Complex& b, double abs_tol = 1e-12, double rel_tol = 1e-12){
-
-    return std::abs(a-b) <= abs_tol + rel_tol * std::max(std::abs(a), std::abs(b));
-}
-
-
-// Returns true if two complex vectors are approximately equal
-// entry-by-entry within combined absolute/relative tolerances.
-//
-// What it checks:
-//   - same vector length
-//   - each entry satisfies approx_equal_complex(...)
-//
-// Why this is needed:
-//   DFT outputs are complex-valued vectors, so this is the main
-//   test for checking whether a computed transform matches the
-//   expected reference output.
-
-
-bool approx_equal_vector(const ComplexVec& expected, const ComplexVec& actual, double abs_tol = 1e-12, double rel_tol = 1e-12){
-
-    if(expected.size() != actual.size()) return false;
-
-    for(std::size_t k = 0; k < expected.size(); k++){
-
-        if(!approx_equal_complex(expected[k], actual[k], abs_tol, rel_tol)) return false;
-
-    }
-    return true;
-}
-
-
-// Returns the maximum absolute entrywise error between two
-// complex vectors.
-//
-// What it calculates:
-//   max_k |expected[k] - actual[k]|
-//
-// Why this is useful:
-//   This gives the worst-case pointwise discrepancy and is
-//   often the fastest way to understand how badly a test failed.
-
-
-double max_abs_error(const ComplexVec& expected, const ComplexVec& actual){
-    
-    if(expected.size() != actual.size()) throw std::invalid_argument("Expected and actual vector sizes do not match");
-
-    Real max_error = 0.0;
-
-    for(std::size_t k = 0; k < expected.size(); k++){
-
-        Real current_error = std::abs(expected[k] - actual[k]);
-
-        if(current_error > max_error) max_error = current_error;
-    }
-
-    return max_error;
-}
-
-
-// Returns the relative L2 error between two complex vectors.
-//
-// What it calculates:
-//   ||expected - actual||_2 / ||expected||_2
-//
-// Special case:
-//   If ||expected||_2 = 0, return ||actual - expected||_2
-//   as an absolute error instead.
-//
-// Why this is useful:
-//   This gives a global energy-style error measure and is a
-//   standard numerical metric for comparing computed outputs
-//   against reference data.
-
-
-double relative_l2_error(const ComplexVec& expected, const ComplexVec& actual){
-
-    if(expected.size() != actual.size()) throw std::invalid_argument("Expected and actual vector sizes do not match");
-
-    Real numerator = 0.0;
-    Real denominator = 0.0;
-
-    for(std::size_t k = 0; k < expected.size(); k++){
-
-        numerator += std::norm(expected[k] - actual[k]);
-        denominator += std::norm(expected[k]);
-    }
-
-    if(denominator == 0.0) return std::sqrt(numerator);
-
-    return std::sqrt(numerator/denominator);
-}
-
-
-// Returns the relative infinity-norm error between two complex vectors.
-//
-// What it calculates:
-//   ||expected - actual||_inf / ||expected||_inf
-//
-// where
-//   ||v||_inf = max_k |v[k]|
-//
-// Special case:
-//   If ||expected||_inf = 0, return ||actual - expected||_inf
-//   as an absolute error instead.
-//
-// Why this is useful:
-//   This measures the worst relative entrywise error and is
-//   useful for detecting a single badly wrong Fourier coefficient.
-
-
-double relative_inf_error(const ComplexVec& expected, const ComplexVec& actual){
-
-    if(expected.size() != actual.size()) throw std::invalid_argument("Expected and actual vector sizes do not match");
-
-    Real max_error = 0.0;
-    Real max_ref = 0.0;
-
-    for(std::size_t k = 0; k < expected.size(); k++){
-
-        Real error_k = std::abs(expected[k] - actual[k]);
-        Real ref_k = std::abs(expected[k]); 
-
-        if(error_k > max_error) max_error = error_k;
-        if(ref_k > max_ref) max_ref = ref_k;
-    }
-
-    if(max_ref == 0.0) return max_error;
-
-    return max_error/max_ref;
-}
-
-
-// Prints a detailed failure report for a failed transform test.
-//
-// What it reports:
-//   - test name
-//   - expected vector
-//   - actual vector
-//   - max absolute error
-//   - relative L2 error
-//   - relative infinity error
-//
-// Why this is useful:
-//   When a DFT test fails, this gives enough numerical detail
-//   to debug whether the issue is scaling, sign convention,
-//   indexing, or a more general implementation bug.
-
-
-void print_failure_report(const std::string& test_name, const ComplexVec& expected, const ComplexVec& actual){
-
-    std::cout << "FAIL: " << test_name << "\n";
-
-    if(expected.size() != actual.size()) {
-        std::cout << "Size mismatch:\n";
-        std::cout << "  expected.size() = " << expected.size() << "\n";
-        std::cout << "  actual.size()   = " << actual.size() << "\n";
-        return;
-    }
-
-    std::cout << std::setprecision(16);
-
-    std::cout << "Expected vector:\n";
-    for(std::size_t k = 0; k < expected.size(); ++k) {
-        std::cout << "  [" << k << "] = ("
-                  << expected[k].real() << ", "
-                  << expected[k].imag() << ")\n";
-    }
-
-    std::cout << "Actual vector:\n";
-    for(std::size_t k = 0; k < actual.size(); ++k) {
-        std::cout << "  [" << k << "] = ("
-                  << actual[k].real() << ", "
-                  << actual[k].imag() << ")\n";
-    }
-
-    std::cout << "Error metrics:\n";
-    std::cout << "  max_abs_error      = " << max_abs_error(expected, actual) << "\n";
-    std::cout << "  relative_l2_error  = " << relative_l2_error(expected, actual) << "\n";
-    std::cout << "  relative_inf_error = " << relative_inf_error(expected, actual) << "\n";
-}
-
-// Runs a known-output DFT test case.
-//
-// What it does:
-//   - computes dft_1d(input)
-//   - compares the computed output against a known expected vector
-//   - returns true if the result passes tolerance checks
-//   - prints a failure report if the test fails
-//
-// Why this is useful:
-//   This is the main driver for analytic sanity checks such as
-//   zero input, constant input, impulse input, and small
-//   hand-computable vectors.
-
-
-bool run_known_output_case(const std::string& test_name, const ComplexVec& input, const ComplexVec& expected, double abs_tol = 1e-12, double rel_tol = 1e-12){
-
-    ComplexVec spectrum = dft_1d(input);
-
-    if(!approx_equal_vector(expected, spectrum, abs_tol, rel_tol)) {
-        print_failure_report(test_name, expected, spectrum);
-        return false;
-    }
-    
-    return true;
-}
-
-
-// Runs a DFT/IDFT round-trip consistency test.
-//
-// What it does:
-//   - computes dft_1d(input)
-//   - computes idft_1d(dft_1d(input))
-//   - compares the reconstructed vector against the original input
-//   - returns true if reconstruction is accurate within tolerance
-//   - prints a failure report if the test fails
-//
-// Why this is useful:
-//   This checks whether the forward and inverse transform
-//   conventions are internally consistent, including sign choice
-//   and normalization by N in the inverse.
-
-
-bool run_round_trip_case(const std::string& test_name, const ComplexVec& input, double abs_tol = 1e-12, double rel_tol = 1e-12){
-
-    ComplexVec spectrum = dft_1d(input);
-    ComplexVec reconstructed_input = idft_1d(spectrum);
-
-    if(!approx_equal_vector(input, reconstructed_input, abs_tol, rel_tol)){
-        print_failure_report(test_name, input, reconstructed_input);
-        return false;
-    }
-
-    return true;
-
-}
-
-
-
-
-
-// Runs a linearity test: DFT(alpha*x + beta*y) == alpha*DFT(x) + beta*DFT(y).
-//
-// What it does:
-//   - computes DFT(alpha*x + beta*y) directly
-//   - computes alpha*DFT(x) + beta*DFT(y) from separate transforms
-//   - compares the two results entry-by-entry
-//   - returns true if they agree within tolerance
-//   - prints a failure report if the test fails
-//
-// Why this is important:
-//   Linearity is a fundamental algebraic property of the DFT.
-//   If this fails, the implementation has a structural bug regardless
-//   of whether known-output tests pass.
-
-
-bool run_linearity_case(const std::string& test_name, const ComplexVec& x, const ComplexVec& y, Complex alpha, Complex beta,
-    double abs_tol = 1e-12, double rel_tol = 1e-12) {
-
-    std::size_t N = x.size();
- 
-    // Build alpha*x + beta*y in physical space
-    ComplexVec combined(N);
-    for(std::size_t j = 0; j < N; j++){
-        combined[j] = alpha * x[j] + beta * y[j];
-    }
- 
-    // DFT of the combined signal
-    ComplexVec lhs = dft_1d(combined);
- 
-    // alpha*DFT(x) + beta*DFT(y) in frequency space
-    ComplexVec dx = dft_1d(x);
-    ComplexVec dy = dft_1d(y);
-    ComplexVec rhs(N);
-    for(std::size_t k = 0; k < N; k++){
-        rhs[k] = alpha * dx[k] + beta * dy[k];
-    }
- 
-    if(!approx_equal_vector(lhs, rhs, abs_tol, rel_tol)){
-        print_failure_report(test_name, lhs, rhs);
-        return false;
-    }
- 
-    return true;
-}
 
 
 
@@ -327,8 +29,8 @@ int main() {
 
     std::vector<std::string> failed_tests;
 
-    const double abs_tol = 1e-12;
-    const double rel_tol = 1e-12;
+    const Real abs_tol = 1e-12;
+    const Real rel_tol = 1e-12;
 
     std::cout << "=== Running 1D DFT tests ===\n\n";
 
@@ -352,7 +54,7 @@ int main() {
             Complex(0.0, 0.0)
         };
 
-        if(!run_known_output_case("zero_vector_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("zero_vector_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("zero_vector_n4");
         }
     }
@@ -373,7 +75,7 @@ int main() {
             Complex(0.0, 0.0)
         };
 
-        if(!run_known_output_case("constant_vector_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("constant_vector_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("constant_vector_n4");
         }
     }
@@ -394,7 +96,7 @@ int main() {
             Complex(1.0, 0.0)
         };
 
-        if(!run_known_output_case("impulse_index0_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("impulse_index0_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("impulse_index0_n4");
         }
     }
@@ -416,7 +118,7 @@ int main() {
             Complex( 0.0,  1.0)
         };
 
-        if(!run_known_output_case("shifted_impulse_index1_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("shifted_impulse_index1_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("shifted_impulse_index1_n4");
         }
     }
@@ -434,7 +136,7 @@ int main() {
             Complex(4.0, 0.0)
         };
 
-        if(!run_known_output_case("hand_check_n2_real", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("hand_check_n2_real", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("hand_check_n2_real");
         }
     }
@@ -456,7 +158,7 @@ int main() {
             Complex(0.0, 0.0)
         };
 
-        if(!run_known_output_case("alternating_real_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("alternating_real_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("alternating_real_n4");
         }
     }
@@ -479,7 +181,7 @@ int main() {
             Complex(0.0, 0.0)
         };
 
-        if(!run_known_output_case("single_complex_mode_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("single_complex_mode_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("single_complex_mode_n4");
         }
     }
@@ -497,7 +199,7 @@ int main() {
             Complex(4.0, 0.0)
         };
 
-        if(!run_round_trip_case("round_trip_real_n4", input, abs_tol, rel_tol)) {
+        if(!run_round_trip_case("round_trip_real_n4", input, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("round_trip_real_n4");
         }
     }
@@ -511,7 +213,7 @@ int main() {
             Complex( 2.5, -4.0)
         };
 
-        if(!run_round_trip_case("round_trip_complex_n4", input, abs_tol, rel_tol)) {
+        if(!run_round_trip_case("round_trip_complex_n4", input, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("round_trip_complex_n4");
         }
     }
@@ -523,7 +225,7 @@ int main() {
             Complex(-0.5, 3.0)
         };
 
-        if(!run_round_trip_case("round_trip_complex_n2", input, abs_tol, rel_tol)) {
+        if(!run_round_trip_case("round_trip_complex_n2", input, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("round_trip_complex_n2");
         }
     }
@@ -551,7 +253,7 @@ int main() {
             Complex(-1.0, 0.0)
         };
  
-        if(!run_known_output_case("shifted_impulse_index2_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("shifted_impulse_index2_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("shifted_impulse_index2_n4");
         }
     }
@@ -574,7 +276,7 @@ int main() {
             Complex( 0.0, -1.0)
         };
  
-        if(!run_known_output_case("shifted_impulse_index3_n4", input, expected, abs_tol, rel_tol)) {
+        if(!run_known_output_case("shifted_impulse_index3_n4", input, expected, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("shifted_impulse_index3_n4");
         }
     }
@@ -605,10 +307,7 @@ int main() {
             Complex(1.0, 0.0)
         };
  
-        ComplexVec actual = idft_1d(input);
- 
-        if(!approx_equal_vector(expected, actual, abs_tol, rel_tol)){
-            print_failure_report("idft_known_constant_spectrum_n4", expected, actual);
+        if(!run_inverse_known_output_case("idft_known_constant_spectrum_n4", input, expected, ITransform_1d::IDFT, abs_tol, rel_tol)){
             failed_tests.push_back("idft_known_constant_spectrum_n4");
         }
     }
@@ -629,10 +328,7 @@ int main() {
             Complex(0.0, 0.0)
         };
  
-        ComplexVec actual = idft_1d(input);
- 
-        if(!approx_equal_vector(expected, actual, abs_tol, rel_tol)){
-            print_failure_report("idft_known_flat_spectrum_n4", expected, actual);
+        if(!run_inverse_known_output_case("idft_known_flat_spectrum_n4", input, expected, ITransform_1d::IDFT, abs_tol, rel_tol)){
             failed_tests.push_back("idft_known_flat_spectrum_n4");
         }
     }
@@ -651,7 +347,7 @@ int main() {
             Complex(5.0, 0.0), Complex(6.0, 0.0), Complex(7.0, 0.0), Complex(8.0, 0.0)
         };
  
-        if(!run_round_trip_case("round_trip_real_n8", input, abs_tol, rel_tol)) {
+        if(!run_round_trip_case("round_trip_real_n8", input, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("round_trip_real_n8");
         }
     }
@@ -664,7 +360,7 @@ int main() {
             input[j] = Complex(std::cos(static_cast<Real>(j)), std::sin(static_cast<Real>(j)));
         }
  
-        if(!run_round_trip_case("round_trip_complex_n16", input, abs_tol, rel_tol)) {
+        if(!run_round_trip_case("round_trip_complex_n16", input, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("round_trip_complex_n16");
         }
     }
@@ -688,7 +384,7 @@ int main() {
         Complex alpha = {2.0, 0.0};
         Complex beta  = {-1.0, 0.0};
  
-        if(!run_linearity_case("linearity_real_scalars_n4", x, y, alpha, beta, abs_tol, rel_tol)) {
+        if(!run_linearity_case("linearity_real_scalars_n4", x, y, alpha, beta, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("linearity_real_scalars_n4");
         }
     }
@@ -703,8 +399,273 @@ int main() {
         Complex alpha = {1.0,  2.0};
         Complex beta  = {0.5, -1.0};
  
-        if(!run_linearity_case("linearity_complex_scalars_n8", x, y, alpha, beta, abs_tol, rel_tol)) {
+        if(!run_linearity_case("linearity_complex_scalars_n8", x, y, alpha, beta, Transform_1d::DFT, abs_tol, rel_tol)) {
             failed_tests.push_back("linearity_complex_scalars_n8");
+        }
+    }
+
+
+    // ------------------------------------------------------------
+    // Parseval's identity tests
+    // sum_j |x[j]|^2 == (1/N) * sum_k |X[k]|^2
+    // Fundamental energy conservation identity. If this fails,
+    // the normalization convention is broken and the spectral
+    // solver will produce incorrect energy dissipation rates.
+    // ------------------------------------------------------------
+
+    // Parseval: real-valued input N=4
+    // Physical energy = 1^2 + 2^2 + 3^2 + 4^2 = 30
+    {
+        ComplexVec input = {
+            Complex(1.0, 0.0), Complex(2.0, 0.0),
+            Complex(3.0, 0.0), Complex(4.0, 0.0)
+        };
+
+        if(!run_parseval_case("parseval_real_n4", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("parseval_real_n4");
+        }
+    }
+
+    // Parseval: complex-valued input N=4
+    // Tests that std::norm correctly accumulates |real|^2 + |imag|^2
+    {
+        ComplexVec input = {
+            Complex( 1.0,  2.0), Complex(-1.0,  3.0),
+            Complex( 2.0, -1.0), Complex( 0.0,  1.0)
+        };
+
+        if(!run_parseval_case("parseval_complex_n4", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("parseval_complex_n4");
+        }
+    }
+
+    // Parseval: single Fourier mode N=8
+    // input[j] = exp(2*pi*i*j/8), energy = N = 8
+    // Spectral energy = (1/8) * N^2 = 8, must be consistent
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            Real theta = 2.0 * PI * static_cast<Real>(j) / static_cast<Real>(N);
+            input[j] = Complex(std::cos(theta), std::sin(theta));
+        }
+
+        if(!run_parseval_case("parseval_single_mode_n8", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("parseval_single_mode_n8");
+        }
+    }
+
+    // Parseval: real sinusoidal input N=16
+    // x[j] = cos(2*pi*j/16), energy split symmetrically
+    // between modes k=1 and k=15
+    {
+        std::size_t N = 16;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            Real theta = 2.0 * PI * static_cast<Real>(j) / static_cast<Real>(N);
+            input[j] = Complex(std::cos(theta), 0.0);
+        }
+
+        if(!run_parseval_case("parseval_cosine_n16", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("parseval_cosine_n16");
+        }
+    }
+
+
+    // ------------------------------------------------------------
+    // Time-shift property tests
+    // DFT(x[j - m])[k] = exp(-2*pi*i*k*m/N) * X[k]
+    // A circular right-shift by m in physical space multiplies
+    // each frequency bin k by a linear phase ramp. If this fails,
+    // the twiddle factor sign convention or circular indexing is wrong.
+    // ------------------------------------------------------------
+
+    // Time shift: impulse at 0 shifted by 1, N=4
+    // x = [1,0,0,0], shifted = [0,1,0,0]
+    // DFT(shifted)[k] = exp(-2*pi*i*k/4) * DFT(x)[k]
+    {
+        ComplexVec input = {
+            Complex(1.0, 0.0), Complex(0.0, 0.0),
+            Complex(0.0, 0.0), Complex(0.0, 0.0)
+        };
+
+        if(!run_time_shift_case("time_shift_impulse_m1_n4", input, 1, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("time_shift_impulse_m1_n4");
+        }
+    }
+
+    // Time shift: real sinusoid shifted by 2, N=8
+    // Shifting by N/2 flips the sign of all odd-frequency bins
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            Real theta = 2.0 * PI * static_cast<Real>(j) / static_cast<Real>(N);
+            input[j] = Complex(std::cos(theta), 0.0);
+        }
+
+        if(!run_time_shift_case("time_shift_cosine_m2_n8", input, 2, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("time_shift_cosine_m2_n8");
+        }
+    }
+
+    // Time shift: complex input shifted by 3, N=8
+    // Non-trivial complex input exercises full phase ramp
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            input[j] = Complex(std::cos(static_cast<Real>(j)), std::sin(static_cast<Real>(j)));
+        }
+
+        if(!run_time_shift_case("time_shift_complex_m3_n8", input, 3, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("time_shift_complex_m3_n8");
+        }
+    }
+
+    // Time shift: shift by N gives identity, N=8
+    // Shifting by exactly N is a full period, must return original spectrum
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            input[j] = Complex(static_cast<Real>(j + 1), 0.0);
+        }
+
+        if(!run_time_shift_case("time_shift_full_period_n8", input, 8, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("time_shift_full_period_n8");
+        }
+    }
+
+    // Time shift: negative shift (left shift) by -1, N=8
+    // Tests that the wrapping formula handles negative shifts correctly
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            input[j] = Complex(std::cos(static_cast<Real>(j)), 0.0);
+        }
+
+        if(!run_time_shift_case("time_shift_negative_m1_n8", input, -1, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("time_shift_negative_m1_n8");
+        }
+    }
+
+
+    // ------------------------------------------------------------
+    // Conjugate symmetry tests
+    // For real-valued input: X[k] = conj(X[(N-k) % N])
+    // X[0] and X[N/2] must be purely real.
+    // The heat solver always starts from a real temperature field,
+    // so this symmetry is a direct precondition for the solver
+    // output to also be real-valued.
+    // ------------------------------------------------------------
+
+    // Conjugate symmetry: constant real input N=4
+    {
+        ComplexVec input = {
+            Complex(1.0, 0.0), Complex(1.0, 0.0),
+            Complex(1.0, 0.0), Complex(1.0, 0.0)
+        };
+
+        if(!run_conjugate_symmetry_case("conj_sym_constant_n4", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("conj_sym_constant_n4");
+        }
+    }
+
+    // Conjugate symmetry: arbitrary real input N=8
+    {
+        ComplexVec input = {
+            Complex(3.0, 0.0), Complex(1.0, 0.0), Complex(-2.0, 0.0), Complex(0.5, 0.0),
+            Complex(7.0, 0.0), Complex(-1.0, 0.0), Complex(4.0, 0.0), Complex(2.0, 0.0)
+        };
+
+        if(!run_conjugate_symmetry_case("conj_sym_arbitrary_n8", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("conj_sym_arbitrary_n8");
+        }
+    }
+
+    // Conjugate symmetry: cosine input N=16
+    // x[j] = cos(2*pi*j/16), energy at k=1 and k=15 only
+    // These two bins must be complex conjugates of each other
+    {
+        std::size_t N = 16;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            Real theta = 2.0 * PI * static_cast<Real>(j) / static_cast<Real>(N);
+            input[j] = Complex(std::cos(theta), 0.0);
+        }
+
+        if(!run_conjugate_symmetry_case("conj_sym_cosine_n16", input, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("conj_sym_cosine_n16");
+        }
+    }
+
+
+    // ------------------------------------------------------------
+    // Modulation property tests
+    // DFT(x[j] * exp(2*pi*i*k0*j/N))[k] = X[(k - k0) mod N]
+    // Multiplying by a complex exponential in physical space
+    // circularly shifts the spectrum. This is the dual of the
+    // time-shift property. If this fails, frequency-bin indexing
+    // or the physical-space phase accumulation is wrong.
+    // ------------------------------------------------------------
+
+    // Modulation: impulse input shifted by 1 frequency bin, N=4
+    // x = [1,0,0,0], DFT(x) = [1,1,1,1]
+    // After modulation by k0=1: spectrum shifts left by 1 -> [1,1,1,1] (invariant here)
+    {
+        ComplexVec input = {
+            Complex(1.0, 0.0), Complex(0.0, 0.0),
+            Complex(0.0, 0.0), Complex(0.0, 0.0)
+        };
+
+        if(!run_modulation_case("modulation_impulse_k1_n4", input, 1, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("modulation_impulse_k1_n4");
+        }
+    }
+
+    // Modulation: cosine input shifted by 1 frequency bin, N=8
+    // x[j] = cos(2*pi*j/8), spectrum has energy at k=1 and k=7
+    // After shift by k0=1: energy moves to k=0 and k=6
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            Real theta = 2.0 * PI * static_cast<Real>(j) / static_cast<Real>(N);
+            input[j] = Complex(std::cos(theta), 0.0);
+        }
+
+        if(!run_modulation_case("modulation_cosine_k1_n8", input, 1, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("modulation_cosine_k1_n8");
+        }
+    }
+
+    // Modulation: complex input shifted by 3 frequency bins, N=8
+    // Non-trivial complex input, larger shift exercises full circular wrap
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            input[j] = Complex(std::cos(static_cast<Real>(j)), std::sin(static_cast<Real>(j)));
+        }
+
+        if(!run_modulation_case("modulation_complex_k3_n8", input, 3, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("modulation_complex_k3_n8");
+        }
+    }
+
+    // Modulation: shift by N gives identity, N=8
+    // Full period shift in frequency space must return original spectrum
+    {
+        std::size_t N = 8;
+        ComplexVec input(N);
+        for(std::size_t j = 0; j < N; j++){
+            input[j] = Complex(static_cast<Real>(j + 1), 0.0);
+        }
+
+        if(!run_modulation_case("modulation_full_period_n8", input, 8, Transform_1d::DFT, abs_tol, rel_tol)) {
+            failed_tests.push_back("modulation_full_period_n8");
         }
     }
  

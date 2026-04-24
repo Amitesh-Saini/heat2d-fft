@@ -46,6 +46,12 @@ target_link_libraries(heat2d_fft_main
 # Test executable: direct 1D DFT
 add_executable(test_dft1d
     tests/test_dft1d.cpp
+    tests/1D_test_utils.cpp
+)
+
+target_include_directories(test_dft1d
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests
 )
 
 target_link_libraries(test_dft1d
@@ -56,6 +62,12 @@ target_link_libraries(test_dft1d
 # Test executable: radix-2 1D FFT
 add_executable(test_fft1d
     tests/test_fft1d.cpp
+    tests/1D_test_utils.cpp
+)
+
+target_include_directories(test_fft1d
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests
 )
 
 target_link_libraries(test_fft1d

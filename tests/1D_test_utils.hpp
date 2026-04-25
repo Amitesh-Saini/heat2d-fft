@@ -22,6 +22,7 @@ enum class Transform_1d {
         DFT,
         FFT 
     };
+    
 enum class ITransform_1d {
         IDFT,
         IFFT 

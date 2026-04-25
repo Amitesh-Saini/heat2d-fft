@@ -25,6 +25,9 @@ namespace{
     ComplexVec dft_1d_kernel(const ComplexVec& input, DFTDirection dir) {
 
         std::size_t N = input.size();
+
+        if(N == 0) throw std::invalid_argument("dft_1d: input array size is 0");
+
         ComplexVec output(N);
 
         Real sign = (dir == DFTDirection::Forward) ? -1.0 : 1.0;

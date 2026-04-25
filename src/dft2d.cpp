@@ -1,11 +1,12 @@
-#include "fft2d.hpp"
-#include "fft1d.hpp"
+#include "dft1d.hpp"
+#include "dft2d.hpp"
 #include <cmath>
 #include <stdexcept>
 
-// fft2d.cpp
+
+// dft2d.cpp
 // Responsibility:
-//   Implementation of row-column 2D FFT/IFFT.
+//   Implementation of row-column 2D dFT/IdFT.
 // What to do here:
 //   - Transform rows first because they are contiguous in row-major storage.
 //   - Gather each column into a temporary vector, transform it, and scatter back.
@@ -16,13 +17,14 @@ namespace{
 
     template <typename Transform>
 
-    void fft_2d_kernel(Grid2D<Complex>& field, Transform transform){
+    Grid2D<Complex>  dft_2d_kernal(const Grid2D<Complex>& field, Transform transform){
 
     std::size_t nx = field.nx();
     std::size_t ny = field.ny();
 
-    if(nx == 0 || ny == 0) throw std::invalid_argument("fft2d error: nx or ny = 0");
-    if(!is_power_of_two(nx) || !is_power_of_two(ny)) throw std::invalid_argument("fft2d error: nx or ny is not a power of 2");
+    if(nx == 0 || ny == 0) throw std::invalid_argument("dft2d error: nx or ny = 0");
+
+    Grid2D<Complex> transformed_field(nx, ny);
 
     // row transforms
 
@@ -37,11 +39,11 @@ namespace{
             row[j] = field(i, j);
         }
 
-        transform(row);
+        row = transform(row);
 
         for(std::size_t j = 0; j < ny; ++j){
 
-            field(i, j) = row[j];
+            transformed_field(i, j) = row[j];
         }
     }
 
@@ -53,29 +55,34 @@ namespace{
 
         for(std::size_t i = 0; i < nx; ++i){
 
-            col[i] = field(i, j);
+            col[i] = transformed_field(i, j);
         }
 
-        transform(col);
+        col = transform(col);
 
         for(std::size_t i = 0; i < nx; ++i){
 
-            field(i, j) = col[i];
+            transformed_field(i, j) = col[i];
         }
     }
+
+
+    return transformed_field;
 }
 
 
 }
 
 
-void fft_2d_inplace(Grid2D<Complex>& field) {
-    
-    fft_2d_kernel(field, fft_1d_inplace);
+
+Grid2D<Complex>  dft_2d(const Grid2D<Complex>& field){
+
+    return dft_2d_kernal(field, dft_1d);
 }
 
-void ifft_2d_inplace(Grid2D<Complex>& field) {
 
-    fft_2d_kernel(field, ifft_1d_inplace);
+
+Grid2D<Complex>  idft_2d(const Grid2D<Complex>& field){
+
+    return dft_2d_kernal(field, idft_1d);
 }
-

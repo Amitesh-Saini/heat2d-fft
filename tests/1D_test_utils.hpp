@@ -73,7 +73,7 @@ bool approx_equal_vector(const ComplexVec& expected, const ComplexVec& actual, R
 //   often the fastest way to understand how badly a test failed.
 
 
-double max_abs_error(const ComplexVec& expected, const ComplexVec& actual);
+Real max_abs_error(const ComplexVec& expected, const ComplexVec& actual);
 
 
 
@@ -92,7 +92,7 @@ double max_abs_error(const ComplexVec& expected, const ComplexVec& actual);
 //   against reference data.
 
 
-double relative_l2_error(const ComplexVec& expected, const ComplexVec& actual);
+Real relative_l2_error(const ComplexVec& expected, const ComplexVec& actual, Real abs_tol);
 
 
 // Returns the relative infinity-norm error between two complex vectors.
@@ -112,7 +112,7 @@ double relative_l2_error(const ComplexVec& expected, const ComplexVec& actual);
 //   useful for detecting a single badly wrong Fourier coefficient.
 
 
-double relative_inf_error(const ComplexVec& expected, const ComplexVec& actual);
+Real relative_inf_error(const ComplexVec& expected, const ComplexVec& actual, Real abs_tol);
 
 
 // Prints a detailed numerical failure report for a failed 1D transform test.

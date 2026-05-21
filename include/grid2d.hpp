@@ -14,8 +14,12 @@
 template <typename T>
 class Grid2D {
 public:
+
+    // Constructors 
     Grid2D() = default;
     Grid2D(std::size_t nx, std::size_t ny) : nx_(nx), ny_(ny), data_(nx * ny) {}
+
+    // Function to resize grid
 
     void resize(std::size_t nx, std::size_t ny) {
         nx_ = nx;
@@ -23,11 +27,26 @@ public:
         data_.assign(nx * ny, T{});
     }
 
+    // Operator to use i,j notation 
+
     T& operator()(std::size_t i, std::size_t j) { return data_[i * ny_ + j]; }
     const T& operator()(std::size_t i, std::size_t j) const { return data_[i * ny_ + j]; }
 
+    // Getters
+
     std::size_t nx() const { return nx_; }
     std::size_t ny() const { return ny_; }
+
+    std::size_t size() const { 
+    return data_.size(); 
+    }  
+
+    // creates grid and initalizes a value to each point
+
+    Grid2D(std::size_t nx, std::size_t ny, const T& value)
+    : nx_(nx), ny_(ny), data_(nx * ny, value) {}
+
+    // returns grid values in form of 1 vector 
 
     std::vector<T>& raw() { return data_; }
     const std::vector<T>& raw() const { return data_; }

@@ -40,7 +40,7 @@ bool approx_equal_vector(const ComplexVec& expected, const ComplexVec& actual, R
 
 
 
-double max_abs_error(const ComplexVec& expected, const ComplexVec& actual){
+Real max_abs_error(const ComplexVec& expected, const ComplexVec& actual){
     
     if(expected.size() != actual.size()) throw std::invalid_argument("Expected and actual vector sizes do not match");
 
@@ -59,7 +59,7 @@ double max_abs_error(const ComplexVec& expected, const ComplexVec& actual){
 
 
 
-double relative_l2_error(const ComplexVec& expected, const ComplexVec& actual){
+Real relative_l2_error(const ComplexVec& expected, const ComplexVec& actual, Real abs_tol){
 
     if(expected.size() != actual.size()) throw std::invalid_argument("Expected and actual vector sizes do not match");
 
@@ -72,7 +72,7 @@ double relative_l2_error(const ComplexVec& expected, const ComplexVec& actual){
         denominator += std::norm(expected[k]);
     }
 
-    if(denominator == 0.0) return std::sqrt(numerator);
+    if(denominator <= abs_tol * abs_tol) return std::sqrt(numerator); // return absolute l2 error
 
     return std::sqrt(numerator/denominator);
 }
@@ -81,7 +81,7 @@ double relative_l2_error(const ComplexVec& expected, const ComplexVec& actual){
 
 
 
-double relative_inf_error(const ComplexVec& expected, const ComplexVec& actual){
+Real relative_inf_error(const ComplexVec& expected, const ComplexVec& actual, Real abs_tol){
 
     if(expected.size() != actual.size()) throw std::invalid_argument("Expected and actual vector sizes do not match");
 
@@ -97,7 +97,7 @@ double relative_inf_error(const ComplexVec& expected, const ComplexVec& actual){
         if(ref_k > max_ref) max_ref = ref_k;
     }
 
-    if(max_ref == 0.0) return max_error;
+    if(max_ref <= abs_tol) return max_error;
 
     return max_error/max_ref;
 }
@@ -105,7 +105,7 @@ double relative_inf_error(const ComplexVec& expected, const ComplexVec& actual){
 
 
 
-void print_failure_report(const std::string& test_name, const ComplexVec& expected, const ComplexVec& actual){
+void print_failure_report(const std::string& test_name, const ComplexVec& expected, const ComplexVec& actual, Real abs_tol){
 
     std::cout << "FAIL: " << test_name << "\n";
 
@@ -134,15 +134,15 @@ void print_failure_report(const std::string& test_name, const ComplexVec& expect
 
     std::cout << "Error metrics:\n";
     std::cout << "  max_abs_error      = " << max_abs_error(expected, actual) << "\n";
-    std::cout << "  relative_l2_error  = " << relative_l2_error(expected, actual) << "\n";
-    std::cout << "  relative_inf_error = " << relative_inf_error(expected, actual) << "\n";
+    std::cout << "  relative_l2_error  = " << relative_l2_error(expected, actual, abs_tol) << "\n";
+    std::cout << "  relative_inf_error = " << relative_inf_error(expected, actual, abs_tol) << "\n";
 }
 
 
 
 void print_scalar_failure_report(const std::string& test_name,
-                                 double expected,
-                                 double actual)
+                                 Real expected,
+                                 Real actual)
 {
     std::cout << "FAIL: " << test_name << "\n";
 

@@ -16,11 +16,6 @@
 #include "grid2d.hpp"
 
 
-constexpr Real PI = 3.14159265358979323846;
-const Real abs_tol = 1e-10;
-const Real rel_tol = 1e-10;
-
-
 // Selects which forward 2D transform a test runner should apply.
 // DFT2D is the slow mathematical reference transform.
 // FFT2D is the fast radix-2 implementation being tested.
@@ -60,28 +55,31 @@ Real max_abs_error_grid(const Grid2D<Complex>& expected, const Grid2D<Complex>& 
 // Computes the relative L2 error between two grids, treating the grid
 // as one flattened vector of complex values.
 // Useful for measuring total reconstruction error in round-trip tests.
-Real relative_l2_error_grid(const Grid2D<Complex>& expected, const Grid2D<Complex>& actual);
+Real relative_l2_error_grid(const Grid2D<Complex>& expected, const Grid2D<Complex>& actual, Real abs_tol);
 
 
 // Computes the relative infinity-norm error between two grids.
 // Useful for catching the largest local error, especially in known-output
 // tests where most coefficients should be exactly zero.
-Real relative_inf_error_grid(const Grid2D<Complex>& expected,const Grid2D<Complex>& actual);
+Real relative_inf_error_grid(const Grid2D<Complex>& expected,const Grid2D<Complex>& actual, Real abs_tol);
 
 
 // Prints a detailed failure report for grid-valued comparisons.
 // Should include the test name, grid shape, max absolute error,
 // relative L2 error, and relative infinity error.
-void print_grid_failure_report(const std::string& test_name, const Grid2D<Complex>& expected, const Grid2D<Complex>& actual);
+void print_grid_failure_report(
+    const std::string& test_name, const Grid2D<Complex>& expected, const Grid2D<Complex>& actual, Real abs_tol);
 
 
 // Prints a failure report for scalar-valued checks such as Parseval energy,
 // maximum imaginary part, or other norm/property tests.
-void print_scalar_failure_report(const std::string& test_name, Real expected, Real actual, Real abs_tol, Real rel_tol);
+void print_scalar_failure_report(
+    const std::string& test_name, Real expected, Real actual, Real abs_tol, Real rel_tol);
 
 
-void print_conjugate_symmetry_2d_failure_report(const std::string& test_name, std::size_t kx, std::size_t ky, std::size_t mirror_kx,
- std::size_t mirror_ky, Complex lhs, Complex rhs);
+void print_conjugate_symmetry_2d_failure_report(
+    const std::string& test_name, std::size_t kx, std::size_t ky, std::size_t mirror_kx, 
+    std::size_t mirror_ky, Complex lhs, Complex rhs);
 
 
 // ------------------------------------------------------------
@@ -115,21 +113,76 @@ Grid2D<Complex> make_impulse_grid(std::size_t nx, std::size_t ny, std::size_t i0
 // frequency bin (kx,ky), where the coefficient should be nx*ny.
 // This is one of the strongest tests for axis ordering, signs, and
 // nx/ny indexing.
-Grid2D<Complex> make_single_mode_grid(std::size_t nx, std::size_t ny, std::size_t kx, std::size_t ky
-);
+Grid2D<Complex> make_single_mode_grid(std::size_t nx, std::size_t ny, std::size_t kx, std::size_t ky);
 
 
-// Creates a real-valued grid made from a mixture of sine/cosine modes.
-// Useful for realistic heat-equation-style inputs, Parseval tests,
-// round-trip tests, and conjugate-symmetry tests.
+// Creates a deterministic real-valued complex grid from a fixed mixture of
+// low-frequency sine/cosine Fourier modes.
+//
+// The output values have zero imaginary part:
+//
+//     u(i,j) = real_value(i,j) + 0i
+//
+// This is useful as a manufactured test input for FFT/DFT round-trip tests,
+// Parseval/energy checks, conjugate-symmetry tests for real-valued inputs,
+// and smooth heat-equation-style initial conditions.
+//
+// Because the modes and coefficients are fixed, this helper is best for
+// debugging: if a test fails, the input signal is always exactly the same.
 Grid2D<Complex> make_real_mixed_mode_grid(std::size_t nx, std::size_t ny);
 
 
-// Creates a general complex-valued test grid with nonzero real and
-// imaginary parts.
-// Useful because real-only inputs can hide bugs that only appear for
-// fully complex data.
+// Creates a real-valued complex grid from a randomized mixture of sine/cosine
+// Fourier modes.
+//
+// The output values have zero imaginary part:
+//
+//     u(i,j) = real_value(i,j) + 0i
+//
+// The mode amplitudes are randomized using the fixed-seed test RNG, so the
+// generated grids are reproducible across test runs. This is useful for stress
+// testing FFT/DFT round-trip accuracy, Parseval/energy checks, conjugate
+// symmetry for real inputs, and heat-equation-style initial conditions.
+//
+// This helper should be used after deterministic manufactured-mode tests pass.
+// The deterministic mixed-mode grid is better for debugging exact failures;
+// this randomized version is better for broader coverage.
+Grid2D<Complex> make_random_real_mixed_mode_grid(std::size_t nx, std::size_t ny, Real lower_bound, Real upper_bound);
+
+
+// Creates a deterministic complex-valued grid from a fixed mixture of complex
+// Fourier modes.
+//
+// Unlike real-valued test grids, this grid has both nonzero real and imaginary
+// parts:
+//
+//     u(i,j) = real_part(i,j) + i * imag_part(i,j)
+//
+// This is useful because real-only inputs can hide bugs related to complex
+// arithmetic, sign conventions, phase handling, normalization, and inverse
+// transform behavior.
+//
+// Because the modes and coefficients are fixed, this helper is best for
+// repeatable debugging of fully complex FFT/DFT behavior.
 Grid2D<Complex> make_complex_test_grid(std::size_t nx, std::size_t ny);
+
+
+// Creates a randomized complex-valued grid from a mixture of complex Fourier
+// modes with randomized amplitudes/phases.
+//
+// The output generally has nonzero real and imaginary parts:
+//
+//     u(i,j) = real_part(i,j) + i * imag_part(i,j)
+//
+// The randomized coefficients/phases should use the fixed-seed test RNG so the
+// generated grids remain reproducible across test runs. This is useful for
+// stress testing FFT/DFT round-trip accuracy, normalization, phase behavior,
+// and complex-valued transform correctness.
+//
+// This helper should be used after deterministic complex-mode tests pass.
+// The deterministic complex grid is better for debugging exact failures;
+// this randomized version is better for broader coverage.
+Grid2D<Complex> make_random_complex_test_grid(std::size_t nx, std::size_t ny, Real lower_bound, Real upper_bound);
 
 
 // ------------------------------------------------------------

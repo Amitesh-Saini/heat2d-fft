@@ -15,3 +15,5 @@ using Complex = std::complex<double>;
 using RealVec = std::vector<Real>;
 using ComplexVec = std::vector<Complex>;
 
+constexpr Real PI = 3.14159265358979323846;
+

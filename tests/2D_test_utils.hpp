@@ -82,6 +82,11 @@ void print_conjugate_symmetry_2d_failure_report(
     std::size_t mirror_ky, Complex lhs, Complex rhs);
 
 
+void print_spectral_decay_failure_report(
+    const std::string& test_name, Real theoretical_ratio, Real actual_ratio, Real initial_physical_energy, Real final_physical_energy, 
+    Real initial_spectral_energy, Real final_spectral_energy, Real max_imag, bool expect_real_output, Real abs_tol, Real rel_tol);
+
+
 // ------------------------------------------------------------
 // Grid construction helpers
 // ------------------------------------------------------------
@@ -132,22 +137,22 @@ Grid2D<Complex> make_single_mode_grid(std::size_t nx, std::size_t ny, std::size_
 Grid2D<Complex> make_real_mixed_mode_grid(std::size_t nx, std::size_t ny);
 
 
-// Creates a real-valued complex grid from a randomized mixture of sine/cosine
-// Fourier modes.
+// Creates a randomized real-valued complex grid with entries sampled
+// independently from a uniform distribution.
 //
 // The output values have zero imaginary part:
 //
 //     u(i,j) = real_value(i,j) + 0i
 //
-// The mode amplitudes are randomized using the fixed-seed test RNG, so the
-// generated grids are reproducible across test runs. This is useful for stress
-// testing FFT/DFT round-trip accuracy, Parseval/energy checks, conjugate
-// symmetry for real inputs, and heat-equation-style initial conditions.
+// Entries are sampled using the fixed-seed test RNG, so generated grids
+// are reproducible across test runs. This is useful for stress testing
+// FFT/DFT round-trip accuracy, Parseval/energy checks, and conjugate
+// symmetry for real inputs.
 //
-// This helper should be used after deterministic manufactured-mode tests pass.
-// The deterministic mixed-mode grid is better for debugging exact failures;
+// This helper should be used after deterministic manufactured-mode tests
+// pass. The deterministic grid is better for debugging exact failures;
 // this randomized version is better for broader coverage.
-Grid2D<Complex> make_random_real_mixed_mode_grid(std::size_t nx, std::size_t ny, Real lower_bound, Real upper_bound);
+Grid2D<Complex> make_random_real_grid(std::size_t nx, std::size_t ny, Real lower_bound, Real upper_bound);
 
 
 // Creates a deterministic complex-valued grid from a fixed mixture of complex
@@ -167,22 +172,20 @@ Grid2D<Complex> make_random_real_mixed_mode_grid(std::size_t nx, std::size_t ny,
 Grid2D<Complex> make_complex_test_grid(std::size_t nx, std::size_t ny);
 
 
-// Creates a randomized complex-valued grid from a mixture of complex Fourier
-// modes with randomized amplitudes/phases.
-//
-// The output generally has nonzero real and imaginary parts:
+// Creates a randomized complex-valued grid with real and imaginary parts
+// sampled independently from a uniform distribution.
 //
 //     u(i,j) = real_part(i,j) + i * imag_part(i,j)
 //
-// The randomized coefficients/phases should use the fixed-seed test RNG so the
-// generated grids remain reproducible across test runs. This is useful for
-// stress testing FFT/DFT round-trip accuracy, normalization, phase behavior,
-// and complex-valued transform correctness.
+// Entries are sampled using the fixed-seed test RNG, so generated grids
+// are reproducible across test runs. This is useful for stress testing
+// FFT/DFT round-trip accuracy, normalization, phase behavior, and
+// complex-valued transform correctness.
 //
 // This helper should be used after deterministic complex-mode tests pass.
-// The deterministic complex grid is better for debugging exact failures;
+// The deterministic grid is better for debugging exact failures;
 // this randomized version is better for broader coverage.
-Grid2D<Complex> make_random_complex_test_grid(std::size_t nx, std::size_t ny, Real lower_bound, Real upper_bound);
+Grid2D<Complex> make_random_complex_grid(std::size_t nx, std::size_t ny, Real lower_bound, Real upper_bound);
 
 
 // ------------------------------------------------------------
@@ -211,7 +214,7 @@ Real spectral_energy_2d(const Grid2D<Complex>& spectrum);
 // Returns a circularly shifted copy of a grid.
 // Positive shifts should wrap around modulo nx and ny.
 // Useful for testing the 2D shift theorem.
-Grid2D<Complex> circular_shift_2d(const Grid2D<Complex>& field, int shift_x, int shift_y);
+Grid2D<Complex> circular_shift_2d(const Grid2D<Complex>& field, std::ptrdiff_t shift_x, std::ptrdiff_t shift_y);
 
 
 // Multiplies a grid by a 2D complex exponential:
@@ -220,7 +223,7 @@ Grid2D<Complex> circular_shift_2d(const Grid2D<Complex>& field, int shift_x, int
 //
 // Useful for testing the 2D modulation theorem, where modulation in
 // physical space shifts the spectrum in frequency space.
-Grid2D<Complex> modulate_2d(const Grid2D<Complex>& field, int kx_shift, int ky_shift);
+Grid2D<Complex> modulate_2d(const Grid2D<Complex>& field, std::ptrdiff_t kx_shift, std::ptrdiff_t ky_shift);
 
 
 // Returns the maximum absolute imaginary part over the grid.
@@ -245,16 +248,18 @@ bool is_real_grid_within_tol(const Grid2D<Complex>& field, Real abs_tol);
 // against an analytically known expected spectrum.
 // Useful for zero grids, constant grids, impulses, checkerboards, and
 // single Fourier modes.
-bool run_known_output_2d_case(const std::string& test_name, const Grid2D<Complex>& input, const Grid2D<Complex>& expected,
- Transform_2d transform, Real abs_tol, Real rel_tol);
+bool run_known_output_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& input, const Grid2D<Complex>& expected, 
+    Transform_2d transform, Real abs_tol, Real rel_tol);
 
 
 // Runs a known-output inverse transform test.
 // Applies the selected inverse transform to a known spectrum and compares
 // against the analytically expected physical-space grid.
 // Useful for checking inverse normalization and sign convention directly.
-bool run_inverse_known_output_2d_case(const std::string& test_name, const Grid2D<Complex>& spectrum, const Grid2D<Complex>& expected,
- ITransform_2d inverse_transform, Real abs_tol, Real rel_tol);
+bool run_inverse_known_output_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& spectrum, const Grid2D<Complex>& expected, 
+    ITransform_2d inverse_transform, Real abs_tol, Real rel_tol);
 
 
 // Runs a forward-then-inverse round-trip test:
@@ -263,8 +268,8 @@ bool run_inverse_known_output_2d_case(const std::string& test_name, const Grid2D
 //
 // Useful for verifying sign convention, normalization, and row/column
 // traversal consistency.
-bool run_round_trip_2d_case(const std::string& test_name, const Grid2D<Complex>& input, Transform_2d transform,
- Real abs_tol, Real rel_tol);
+bool run_round_trip_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& input, Transform_2d transform, Real abs_tol, Real rel_tol);
 
 
 // Runs a 2D linearity test:
@@ -273,8 +278,9 @@ bool run_round_trip_2d_case(const std::string& test_name, const Grid2D<Complex>&
 //
 // Useful because Fourier transforms are linear operators. This catches
 // structural mistakes in grid traversal and transform application.
-bool run_linearity_2d_case(const std::string& test_name, const Grid2D<Complex>& x, const Grid2D<Complex>& y, Complex alpha,
- Complex beta, Transform_2d transform, Real abs_tol, Real rel_tol);
+bool run_linearity_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& x, const Grid2D<Complex>& y, Complex alpha, 
+    Complex beta, Transform_2d transform, Real abs_tol, Real rel_tol);
 
 
 // Runs a 2D Parseval test:
@@ -283,15 +289,17 @@ bool run_linearity_2d_case(const std::string& test_name, const Grid2D<Complex>& 
 //
 // Useful because it checks global energy consistency under your transform
 // normalization convention.
-bool run_parseval_2d_case(const std::string& test_name, const Grid2D<Complex>& input, Transform_2d transform, Real abs_tol, Real rel_tol);
+bool run_parseval_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& input, Transform_2d transform, Real abs_tol, Real rel_tol);
 
 
 // Runs the 2D circular-shift theorem test.
 // A circular shift in physical space should multiply the spectrum by
 // a predictable 2D phase factor.
 // Useful for catching sign mistakes and axis-ordering bugs.
-bool run_shift_2d_case(const std::string& test_name, const Grid2D<Complex>& input, int shift_x, int shift_y, Transform_2d transform,
- Real abs_tol, Real rel_tol);
+bool run_shift_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& input, std::ptrdiff_t shift_x, std::ptrdiff_t shift_y, 
+    Transform_2d transform, Real abs_tol, Real rel_tol);
 
 
 // Runs the 2D conjugate-symmetry test for real-valued input:
@@ -301,25 +309,98 @@ bool run_shift_2d_case(const std::string& test_name, const Grid2D<Complex>& inpu
 // Useful because real heat-equation fields should produce conjugate-symmetric
 // spectra. If this fails, inverse transforms may produce nontrivial imaginary
 // artifacts.
-bool run_conjugate_symmetry_2d_case(const std::string& test_name, const Grid2D<Complex>& real_input, Transform_2d transform, Real abs_tol,
- Real rel_tol);
+bool run_conjugate_symmetry_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& real_input, Transform_2d transform, 
+    Real abs_tol, Real rel_tol);
 
 
 // Runs the 2D modulation theorem test.
 // Multiplying the physical grid by a complex exponential should shift the
 // spectrum by the corresponding frequency-bin offset.
 // Useful for checking frequency indexing and wraparound behavior.
-bool run_modulation_2d_case(const std::string& test_name, const Grid2D<Complex>& input, int kx_shift, int ky_shift,
- Transform_2d transform, Real abs_tol, Real rel_tol);
+bool run_modulation_2d_case(
+    const std::string& test_name, const Grid2D<Complex>& input, std::ptrdiff_t kx_shift, std::ptrdiff_t ky_shift, 
+    Transform_2d transform, Real abs_tol, Real rel_tol);
 
 
 // Compares the fast 2D FFT result against the slow mathematical 2D DFT
 // reference on the same input.
 // This is the definitive small-N correctness check for the FFT.
-bool run_fft2d_vs_dft2d_case(const std::string& test_name, const Grid2D<Complex>& input, Real abs_tol, Real rel_tol);
+bool run_fft2d_vs_dft2d_case(
+    const std::string& test_name, const Grid2D<Complex>& input, Real abs_tol, Real rel_tol);
 
 
 // Verifies that the 2D FFT rejects invalid dimensions.
 // The radix-2 FFT requires both nx and ny to be nonzero powers of two.
 // This is a contract test, not a numerical accuracy test.
 bool run_power_of_two_enforcement_2d_case(const std::string& test_name, std::size_t nx, std::size_t ny);
+
+
+// Runs a 2D separability test for the row-column FFT decomposition.
+//
+// What it does:
+//   - applies the selected 2D forward transform to the input grid
+//   - independently applies 1D row-wise FFTs to every row, then
+//     1D column-wise FFTs to every column of the result
+//   - compares the two outputs entry-by-entry within tolerance
+//   - returns true if both outputs agree within tolerance
+//   - prints a failure report if the test fails
+//
+// Why this is needed:
+//   The 2D FFT is implemented as a row-column decomposition. This test
+//   verifies that the 2D transform is structurally consistent with that
+//   decomposition, not just numerically close to the DFT reference.
+//   A failure here indicates a bug in axis ordering, row/column traversal,
+//   or intermediate storage — bugs that may be invisible in round-trip
+//   or Parseval tests but would corrupt wavenumber indexing in the
+//   heat solver.
+bool run_separability_2d_case(const std::string& test_name, const Grid2D<Complex>& input,
+    Transform_2d transform, Real abs_tol, Real rel_tol);
+
+
+// Runs a spectral heat decay test.
+//
+// What it does:
+//   - applies the selected 2D forward transform to the input grid
+//   - multiplies each spectral coefficient U(kx, ky) by the heat kernel
+//     exp(-alpha * (kx^2 + ky^2) * t)
+//   - applies the inverse transform to recover the decayed physical field
+//   - computes the physical-space energy of the input and decayed field
+//   - verifies that the energy ratio matches the theoretically predicted
+//     decay within tolerance
+//   - returns true if the energy relation holds
+//   - prints a scalar failure report if the test fails
+//
+// Why this is needed:
+//   This is a direct smoke test of the heat solver's core spectral
+//   operation. It verifies that wavenumber indexing, normalization, and
+//   the modal decay formula are all mutually consistent. A failure here
+//   means the heat solver will produce physically wrong energy dissipation
+//   even if all other FFT tests pass.
+bool run_spectral_decay_2d_case(const std::string& test_name, const Grid2D<Complex>& input,
+    Transform_2d transform, Real alpha, Real time, Real Lx, Real Ly, bool expect_real_output, Real abs_tol, Real rel_tol);
+
+
+// Compares my 2D FFT forward and inverse transforms against FFTW3
+// on the same input grid.
+//
+// What it does:
+//   - applies fft_2d_inplace to a copy of the input and records the spectrum
+//   - applies the FFTW3 forward transform to the same input and records its spectrum
+//   - compares the two forward spectra using relative L2 and infinity-norm errors
+//   - applies ifft_2d_inplace to my spectrum
+//   - applies the FFTW3 inverse transform to the FFTW3 spectrum
+//   - compares the two reconstructed grids
+//   - returns true if both the forward spectra and reconstructed grids agree
+//     within tolerance
+//   - prints a grid failure report at the first failing checkpoint
+//
+// Why I need this:
+//   My round-trip and DFT-agreement tests verify that my implementation is
+//   internally consistent, but they cannot prove it is numerically correct
+//   in an absolute sense. FFTW3 is the industry-standard reference used in
+//   production HPC codes. If my FFT agrees with FFTW3 at large N (512, 1024,
+//   2048) I can be confident my heat solver is built on a correct spectral
+//   foundation. This is the strongest correctness guarantee I can get for
+//   my implementation.
+bool run_fft2d_vs_fftw_case(const std::string& test_name, const Grid2D<Complex>& input, Real abs_tol, Real rel_tol);

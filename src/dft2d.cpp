@@ -75,15 +75,14 @@ namespace{
 }
 
 
-
-Grid2D<Complex>  dft_2d(const Grid2D<Complex>& field){
+Grid2D<Complex> dft_2d(const Grid2D<Complex>& field){
 
     return dft_2d_kernal(field, dft_1d);
 }
 
 
 
-Grid2D<Complex>  idft_2d(const Grid2D<Complex>& field){
+Grid2D<Complex> idft_2d(const Grid2D<Complex>& field){
 
     return dft_2d_kernal(field, idft_1d);
 }

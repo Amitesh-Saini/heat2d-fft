@@ -22,6 +22,10 @@ bool approx_equal_complex(const Complex& a, const Complex& b, Real abs_tol, Real
 }
 
 
+bool approx_equal_real(const Real& a, const Real&b, Real abs_tol, Real rel_tol){
+
+    return std::abs(a-b) <= abs_tol + rel_tol * std::max(std::abs(a), std::abs(b));
+}
 
 
 
@@ -217,7 +221,7 @@ bool run_known_output_case(const std::string& test_name, const ComplexVec& input
     }
 
     if(!approx_equal_vector(expected, spectrum, abs_tol, rel_tol)) {
-        print_failure_report(test_name, expected, spectrum);
+        print_failure_report(test_name, expected, spectrum, abs_tol);
         return false;
     }
     
@@ -254,7 +258,7 @@ bool run_round_trip_case(const std::string& test_name, const ComplexVec& input, 
     }
 
     if(!approx_equal_vector(input, reconstructed_input, abs_tol, rel_tol)){
-        print_failure_report(test_name, input, reconstructed_input);
+        print_failure_report(test_name, input, reconstructed_input, abs_tol);
         return false;
     }
 
@@ -321,7 +325,7 @@ bool run_linearity_case(const std::string& test_name, const ComplexVec& x, const
 
  
     if(!approx_equal_vector(lhs, rhs, abs_tol, rel_tol)){
-        print_failure_report(test_name, lhs, rhs);
+        print_failure_report(test_name, lhs, rhs, abs_tol);
         return false;
     }
  
@@ -403,17 +407,17 @@ bool run_time_shift_case(const std::string& test_name, const ComplexVec& input, 
 
     if(transform == Transform_1d::DFT){
 
-        actual_output = dft_1d(shifted_input);
-        expected_output = dft_1d(input);
+        expected_output = dft_1d(shifted_input);
+        actual_output = dft_1d(input);
     }
 
     else if(transform == Transform_1d::FFT){
 
-        actual_output = shifted_input;
-        fft_1d_inplace(actual_output);
-
-        expected_output = input;
+        expected_output = shifted_input;
         fft_1d_inplace(expected_output);
+
+        actual_output = input;
+        fft_1d_inplace(actual_output);
 
     }
 
@@ -422,12 +426,12 @@ bool run_time_shift_case(const std::string& test_name, const ComplexVec& input, 
     }
 
     for(std::size_t k = 0; k < N; ++k){
-            expected_output[k] *= phase;
+            actual_output[k] *= phase;
             phase *= omega;
             }
 
     if(!approx_equal_vector(expected_output, actual_output, abs_tol, rel_tol)){
-        print_failure_report(test_name, expected_output, actual_output);
+        print_failure_report(test_name, expected_output, actual_output, abs_tol);
         return false;
     }
 
@@ -511,7 +515,7 @@ bool run_inverse_known_output_case(const std::string& test_name, const ComplexVe
 
     if(!approx_equal_vector(expected, actual, abs_tol, rel_tol)){
         
-        print_failure_report(test_name, expected, actual);
+        print_failure_report(test_name, expected, actual, abs_tol);
         return false;
     }
 
@@ -570,7 +574,7 @@ bool run_modulation_case(const std::string& test_name, const ComplexVec& input, 
 
     if(!approx_equal_vector(expected_output, actual_output, abs_tol, rel_tol)){
 
-        print_failure_report(test_name, expected_output, actual_output);
+        print_failure_report(test_name, expected_output, actual_output, abs_tol);
         return false;
     }
 
@@ -596,7 +600,7 @@ bool run_fft_vs_dft_case(const std::string& test_name, const ComplexVec& input, 
 
     if(!approx_equal_vector(expected_output, actual_output, abs_tol, rel_tol)){
         
-        print_failure_report(test_name, expected_output, actual_output);
+        print_failure_report(test_name, expected_output, actual_output, abs_tol);
         return false;
     }
 

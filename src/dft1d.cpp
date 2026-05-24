@@ -1,9 +1,6 @@
 #include "dft1d.hpp"
 #include <cmath>
 
-constexpr Real PI = 3.14159265358979323846;
-
-
 
 // dft1d.cpp
 // Responsibility:

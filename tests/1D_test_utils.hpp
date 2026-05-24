@@ -12,12 +12,6 @@
 
 #include "types.hpp"
 
-
-
-constexpr Real PI = 3.14159265358979323846;
-
-
-
 enum class Transform_1d {
         DFT,
         FFT 
@@ -41,6 +35,11 @@ enum class ITransform_1d {
 //   transform outputs.
 
 bool approx_equal_complex(const Complex& a, const Complex& b, Real abs_tol = 1e-12, Real rel_tol = 1e-12);
+
+
+// Same as approx_equal_complex but for scalars
+
+bool approx_equal_real(const Real& a, const Real&b, Real abs_tol = 1e-12, Real rel_tol = 1e-12);
 
 
 
@@ -138,12 +137,10 @@ Real relative_inf_error(const ComplexVec& expected, const ComplexVec& actual, Re
 //   actual ComplexVec.
 
 void print_failure_report(const std::string& test_name, const ComplexVec& expected, 
- const ComplexVec& actual);
+ const ComplexVec& actual, Real abs_tol);
 
 
-
-
- // Prints a detailed numerical failure report for a failed scalar test.
+// Prints a detailed numerical failure report for a failed scalar test.
 //
 // What it reports:
 //   - test name

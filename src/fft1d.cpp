@@ -2,8 +2,6 @@
 #include <cmath>
 #include <stdexcept>
 
-constexpr Real PI = 3.14159265358979323846;
-
 // fft1d.cpp
 // Responsibility:
 //   Implementation of the radix-2 1D FFT/IFFT.

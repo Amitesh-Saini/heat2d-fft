@@ -86,13 +86,13 @@ Grid2D<Real> make_gaussian_ic(
 
             for(std::ptrdiff_t m = -irx; m < irx + 1; ++m){
                 
-                Real x_part = (x_i + static_cast<Real>(m) * Lx) * (x_i + static_cast<Real>(m) * Lx);
+                Real x_part = (x_i + static_cast<Real>(m) * Lx) * (x_i + static_cast<Real>(m) * Lx) / sigma_sq;
 
                 for(std::ptrdiff_t n = -iry; n < iry + 1; ++n){
 
-                    Real y_part = (y_j + static_cast<Real>(n) * Ly) * (y_j + static_cast<Real>(n) * Ly);
+                    Real y_part = (y_j + static_cast<Real>(n) * Ly) * (y_j + static_cast<Real>(n) * Ly) / sigma_sq;
 
-                    value += std::exp(-(x_part + y_part) / sigma_sq);
+                    value += std::exp(-(x_part + y_part));
                 }
             }
 

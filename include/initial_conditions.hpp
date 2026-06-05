@@ -130,7 +130,7 @@ Grid2D<Real> make_gaussian_ic(
 Grid2D<Real> make_hot_square_ic(
     Real Lx, Real Ly, std::size_t nx, std::size_t ny, Real amplitude = 1.0, 
     std::optional<Real> width_x = std::nullopt, std::optional<Real> width_y = std::nullopt, 
-    std::optional<Real> mooth_width_x = std::nullopt, std::optional<Real> mooth_width_y = std::nullopt, 
+    std::optional<Real> smooth_width_x = std::nullopt, std::optional<Real> smooth_width_y = std::nullopt, 
     const ValidationConfig& validation = ValidationConfig{});
 
 

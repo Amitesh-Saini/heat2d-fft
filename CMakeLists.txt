@@ -123,3 +123,19 @@ target_link_libraries(test_fft2d
     PRIVATE
         heat2d_fft_core
 )
+
+# Test executable: Fourier wavenumbers
+add_executable(test_wavenumbers
+    tests/test_wavenumbers.cpp
+    tests/1D_test_utils.cpp
+)
+
+target_include_directories(test_wavenumbers
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests
+)
+
+target_link_libraries(test_wavenumbers
+    PRIVATE
+        heat2d_fft_core
+)

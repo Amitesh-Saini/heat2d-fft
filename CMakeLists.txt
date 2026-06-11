@@ -17,14 +17,45 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Locate FFTW3 via pkg-config (installed via brew install fftw)
+# ------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------
+
+# Locate FFTW3 via pkg-config.
+# On macOS with Homebrew, install with:
+#   brew install fftw pkg-config
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFTW REQUIRED fftw3)
+pkg_check_modules(FFTW REQUIRED IMPORTED_TARGET fftw3)
 
-link_directories(/opt/homebrew/lib)
+# JSON library for config-file driven runs.
+# First try a system/package-manager install. If unavailable, fetch it.
+find_package(nlohmann_json QUIET)
 
+if(NOT nlohmann_json_FOUND)
+    include(FetchContent)
+
+    FetchContent_Declare(
+        nlohmann_json
+        URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
+# ------------------------------------------------------------
+# Build options
+# ------------------------------------------------------------
+
+option(HEAT2D_BUILD_TESTS "Build test executables" ON)
+option(HEAT2D_BUILD_BENCHMARKS "Build benchmark executables" ON)
+
+# ------------------------------------------------------------
 # Core numerical library
+# ------------------------------------------------------------
+
 add_library(heat2d_fft_core
+    # Existing core files
     src/config.cpp
     src/dft1d.cpp
     src/dft2d.cpp
@@ -33,22 +64,32 @@ add_library(heat2d_fft_core
     src/wavenumbers.cpp
     src/initial_conditions.cpp
     src/heat2d_fourier.cpp
-    src/norms.cpp
     src/io_csv.cpp
+
+    # New architecture/output/config files
+    src/run_config.cpp
+    src/config_io.cpp
+    src/time_grid.cpp
+    src/diagnostics.cpp
+    src/npy_writer.cpp
+    src/snapshot_writer.cpp
 )
 
 target_include_directories(heat2d_fft_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${FFTW_INCLUDE_DIRS}        # FFTW3 headers (fftw3.h)
 )
 
 target_link_libraries(heat2d_fft_core
     PUBLIC
-        ${FFTW_LIBRARIES}           # links -lfftw3
+        PkgConfig::FFTW
+        nlohmann_json::nlohmann_json
 )
 
+# ------------------------------------------------------------
 # Main executable
+# ------------------------------------------------------------
+
 add_executable(heat2d_fft_main
     src/main.cpp
 )
@@ -58,84 +99,175 @@ target_link_libraries(heat2d_fft_main
         heat2d_fft_core
 )
 
-# Test executable: direct 1D DFT
-add_executable(test_dft1d
-    tests/test_dft1d.cpp
-    tests/1D_test_utils.cpp
+# Optional: make the built executable name nicer.
+# Then you can run:
+#   ./heat2d configs/gaussian_demo.json
+set_target_properties(heat2d_fft_main
+    PROPERTIES
+        OUTPUT_NAME heat2d
 )
 
-target_include_directories(test_dft1d
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
+# ------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------
 
-target_link_libraries(test_dft1d
-    PRIVATE
-        heat2d_fft_core
-)
+if(HEAT2D_BUILD_TESTS)
+    enable_testing()
 
-# Test executable: radix-2 1D FFT
-add_executable(test_fft1d
-    tests/test_fft1d.cpp
-    tests/1D_test_utils.cpp
-)
+    # Test executable: direct 1D DFT
+    add_executable(test_dft1d
+        tests/test_dft1d.cpp
+        tests/1D_test_utils.cpp
+    )
 
-target_include_directories(test_fft1d
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
+    target_include_directories(test_dft1d
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
 
-target_link_libraries(test_fft1d
-    PRIVATE
-        heat2d_fft_core
-)
+    target_link_libraries(test_dft1d
+        PRIVATE
+            heat2d_fft_core
+    )
 
-# Test executable: direct 2D DFT
-add_executable(test_dft2d
-    tests/test_dft2d.cpp
-    tests/2D_test_utils.cpp
-    tests/1D_test_utils.cpp
-)
+    add_test(NAME test_dft1d COMMAND test_dft1d)
 
-target_include_directories(test_dft2d
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
+    # Test executable: radix-2 1D FFT
+    add_executable(test_fft1d
+        tests/test_fft1d.cpp
+        tests/1D_test_utils.cpp
+    )
 
-target_link_libraries(test_dft2d
-    PRIVATE
-        heat2d_fft_core
-)
+    target_include_directories(test_fft1d
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
 
-# Test executable: 2D FFT (includes FFTW3 comparison runner)
-add_executable(test_fft2d
-    tests/test_fft2d.cpp
-    tests/2D_test_utils.cpp
-    tests/1D_test_utils.cpp
-)
+    target_link_libraries(test_fft1d
+        PRIVATE
+            heat2d_fft_core
+    )
 
-target_include_directories(test_fft2d
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
+    add_test(NAME test_fft1d COMMAND test_fft1d)
 
-target_link_libraries(test_fft2d
-    PRIVATE
-        heat2d_fft_core
-)
+    # Test executable: direct 2D DFT
+    add_executable(test_dft2d
+        tests/test_dft2d.cpp
+        tests/2D_test_utils.cpp
+        tests/1D_test_utils.cpp
+    )
 
-# Test executable: Fourier wavenumbers
-add_executable(test_wavenumbers
-    tests/test_wavenumbers.cpp
-    tests/1D_test_utils.cpp
-)
+    target_include_directories(test_dft2d
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
 
-target_include_directories(test_wavenumbers
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
+    target_link_libraries(test_dft2d
+        PRIVATE
+            heat2d_fft_core
+    )
 
-target_link_libraries(test_wavenumbers
-    PRIVATE
-        heat2d_fft_core
-)
+    add_test(NAME test_dft2d COMMAND test_dft2d)
+
+    # Test executable: 2D FFT
+    add_executable(test_fft2d
+        tests/test_fft2d.cpp
+        tests/2D_test_utils.cpp
+        tests/1D_test_utils.cpp
+    )
+
+    target_include_directories(test_fft2d
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_link_libraries(test_fft2d
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_test(NAME test_fft2d COMMAND test_fft2d)
+
+    # Test executable: Fourier wavenumbers
+    add_executable(test_wavenumbers
+        tests/test_wavenumbers.cpp
+        tests/1D_test_utils.cpp
+    )
+
+    target_include_directories(test_wavenumbers
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_link_libraries(test_wavenumbers
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_test(NAME test_wavenumbers COMMAND test_wavenumbers)
+
+    # Test executable: 2D Fourier heat solver
+    add_executable(test_heat2d_fourier
+        tests/test_heat2d_fourier.cpp
+        tests/1D_test_utils.cpp
+    )
+
+    target_include_directories(test_heat2d_fourier
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_link_libraries(test_heat2d_fourier
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_test(NAME test_heat2d_fourier COMMAND test_heat2d_fourier)
+
+    # New tests can be added once implemented.
+    # Uncomment when tests/test_time_grid.cpp exists and has a main().
+    #
+    # add_executable(test_time_grid
+    #     tests/test_time_grid.cpp
+    # )
+    #
+    # target_link_libraries(test_time_grid
+    #     PRIVATE
+    #         heat2d_fft_core
+    # )
+    #
+    # add_test(NAME test_time_grid COMMAND test_time_grid)
+endif()
+
+# ------------------------------------------------------------
+# Benchmarks
+# ------------------------------------------------------------
+
+if(HEAT2D_BUILD_BENCHMARKS)
+    add_executable(bench_fft1d
+        benchmarks/bench_fft1d.cpp
+    )
+
+    target_link_libraries(bench_fft1d
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_executable(bench_fft2d
+        benchmarks/bench_fft2d.cpp
+    )
+
+    target_link_libraries(bench_fft2d
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_executable(bench_heat2d
+        benchmarks/bench_heat2d.cpp
+    )
+
+    target_link_libraries(bench_heat2d
+        PRIVATE
+            heat2d_fft_core
+    )
+endif()

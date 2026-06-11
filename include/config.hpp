@@ -1,12 +1,15 @@
-#pragma once
 // config.hpp
 // Responsibility:
-//   Defines helper utilities for constructing default solver configurations.
-// Notes:
-//   - Keeps main.cpp thin by centralizing default parameter choices.
-//   - Extend this later if you add command-line parsing or experiment presets.
+//   Declare helper functions for constructing default solver configurations.
+//
+//   Configuration objects store solver-level parameters such as domain size,
+//   grid resolution, thermal diffusivity, and output times. Numerical solver
+//   logic belongs in heat2d_fourier.cpp, not here.
+
+#pragma once
 
 #include "heat2d_fourier.hpp"
 
-// Returns a default configuration for the 2D Fourier heat solver.
+// Returns a standard default configuration for the 2D periodic FFT heat solver.
+// The default domain is [-1, 1) x [-1, 1), represented by Lx = Ly = 2.
 Heat2DConfig make_default_heat2d_config();

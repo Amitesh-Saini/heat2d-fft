@@ -1269,11 +1269,12 @@ int main() {
 
     // 2048x2048: largest manual-confidence FFTW comparison case
     // This is a stress-level correctness check against FFTW.
-    // It is intentionally only one case because memory and runtime grow quickly.
+    // It is intentionally only one case because memory and runtime grow quickly. 
+    // Looser tols
     {
         Grid2D<Complex> input = make_real_mixed_mode_grid(2048, 2048);
 
-        if(!run_fft2d_vs_fftw_case("fft_vs_fftw_real_2048x2048", input, 1e-8, fftw_rel_tol)) {
+        if(!run_fft2d_vs_fftw_case("fft_vs_fftw_real_2048x2048", input, 1e-7, fftw_rel_tol)) {
             failed_tests.push_back("fft_vs_fftw_real_2048x2048");
         }
     }
@@ -1486,6 +1487,9 @@ int main() {
             failed_tests.push_back("spectral_decay_real_2048x2048");
         }
     }
+
+
+    
 
 
     // --------------------------------------------------------

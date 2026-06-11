@@ -1,3 +1,4 @@
+#pragma once
 // initial_conditions.hpp
 // Responsibility:
 //   Declares user-selectable initial-condition generators for the 2D periodic
@@ -21,8 +22,6 @@
 //     restrictions, such as radix-2 power-of-two sizes, belong in the FFT or
 //     solver layer.
 
-
-#pragma once
 
 #include <optional>
 #include <algorithm>

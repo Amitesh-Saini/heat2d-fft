@@ -44,4 +44,6 @@
 /build/
 
 # Editor settings
-/.vscode/
+/.vscode/.DS_Store
+.DS_Store
+.vscode/

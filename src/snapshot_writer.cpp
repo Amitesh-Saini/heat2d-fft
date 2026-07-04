@@ -10,8 +10,7 @@
 //     - optional validation/error data.
 //
 //   The writer may use lower-level modules such as:
-//     - npy_writer for full 2D field snapshots,
-//     - io_csv for small scalar tables,
+//     -   HDF5 for full 2D field snapshots,
 //     - diagnostics for computing mean, L2 norm, min, and max.
 //
 //   The solver should not write files directly. It should return snapshots,

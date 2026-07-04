@@ -27,6 +27,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFTW REQUIRED IMPORTED_TARGET fftw3)
 
+# HDF5 C library for consolidated run-output files.
+# On macOS with Homebrew, install with:
+#   brew install hdf5
+find_package(HDF5 REQUIRED COMPONENTS C)
+
 # JSON library for config-file driven runs.
 # First try a system/package-manager install. If unavailable, fetch it.
 find_package(nlohmann_json QUIET)
@@ -42,6 +47,31 @@ if(NOT nlohmann_json_FOUND)
 
     FetchContent_MakeAvailable(nlohmann_json)
 endif()
+
+# ------------------------------------------------------------
+# Build provenance (build_info.hpp)
+# ------------------------------------------------------------
+# Captures the git commit at CMake configure time and generates
+# build_info.hpp in the build tree. Note: the hash is captured when CMake
+# runs, so re-run CMake after committing if you need the hash to be exact.
+
+execute_process(
+    COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE HEAT2D_GIT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+if(NOT HEAT2D_GIT_COMMIT)
+    set(HEAT2D_GIT_COMMIT "unknown")
+endif()
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/build_info.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/build_info.hpp
+    @ONLY
+)
 
 # ------------------------------------------------------------
 # Build options
@@ -71,18 +101,20 @@ add_library(heat2d_fft_core
     src/config_io.cpp
     src/time_grid.cpp
     src/diagnostics.cpp
-    src/npy_writer.cpp
+    src/hdf5_writer.cpp
     src/snapshot_writer.cpp
 )
 
 target_include_directories(heat2d_fft_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
 target_link_libraries(heat2d_fft_core
     PUBLIC
         PkgConfig::FFTW
+        HDF5::HDF5
         nlohmann_json::nlohmann_json
 )
 
@@ -224,19 +256,24 @@ if(HEAT2D_BUILD_TESTS)
 
     add_test(NAME test_heat2d_fourier COMMAND test_heat2d_fourier)
 
-    # New tests can be added once implemented.
-    # Uncomment when tests/test_time_grid.cpp exists and has a main().
-    #
-    # add_executable(test_time_grid
-    #     tests/test_time_grid.cpp
-    # )
-    #
-    # target_link_libraries(test_time_grid
-    #     PRIVATE
-    #         heat2d_fft_core
-    # )
-    #
-    # add_test(NAME test_time_grid COMMAND test_time_grid)
+
+    # Test executable: diagnostics (analytic reference + solver validation)
+    add_executable(test_diagnostics
+        tests/test_diagnostics.cpp
+    )
+
+    target_link_libraries(test_diagnostics
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_test(NAME test_diagnostics COMMAND test_diagnostics)
+
+    # New tests can be added once implemented, following the same pattern:
+    #   - tests/test_time_grid.cpp
+    #   - tests/test_config_io.cpp   (valid / missing key / unknown key / bad value)
+    #   - tests/test_diagnostics.cpp
+    #   - tests/test_hdf5_writer.cpp (C++ writes, Python/h5py round-trip reads)
 endif()
 
 # ------------------------------------------------------------

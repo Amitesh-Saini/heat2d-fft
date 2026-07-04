@@ -7,8 +7,8 @@
 Heat2DConfig make_default_heat2d_config() {
     Heat2DConfig cfg;
 
-    cfg.nx = 256;
-    cfg.ny = 256;   
+    cfg.nx = 512;
+    cfg.ny = 512;   
 
     cfg.Lx = Real{2.0};
     cfg.Ly = Real{2.0};

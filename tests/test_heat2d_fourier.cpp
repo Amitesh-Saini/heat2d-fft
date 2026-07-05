@@ -21,20 +21,13 @@
 #include "grid2d.hpp"
 #include "types.hpp"
 #include "1D_test_utils.hpp"
+#include "diagnostics.hpp"
 
 
 Grid2D<Real> make_exact_single_fourier_solution_grid(
-    Real Lx,
-    Real Ly,
-    std::size_t nx,
-    std::size_t ny,
-    std::ptrdiff_t kx,
-    std::ptrdiff_t ky,
-    Real amplitude,
-    Real phase,
-    Real alpha,
-    Real time
-) {
+    Real Lx, Real Ly, std::size_t nx, std::size_t ny, std::ptrdiff_t kx, std::ptrdiff_t ky, Real amplitude,
+    Real phase, Real alpha, Real time){
+
     Grid2D<Real> exact(nx, ny);
 
     const Real dx = Lx / static_cast<Real>(nx);
@@ -62,52 +55,9 @@ Grid2D<Real> make_exact_single_fourier_solution_grid(
     return exact;
 }
 
-
-Grid2D<Real> make_exact_multi_fourier_solution_grid(
-    Real Lx,
-    Real Ly,
-    std::size_t nx,
-    std::size_t ny,
-    const std::vector<FourierMode2D>& modes,
-    Real alpha,
-    Real time
-) {
-    Grid2D<Real> exact(nx, ny, Real{0});
-
-    const Real dx = Lx / static_cast<Real>(nx);
-    const Real dy = Ly / static_cast<Real>(ny);
-
-    const Real x_min = -Lx / Real{2};
-    const Real y_min = -Ly / Real{2};
-
-    for(const auto& mode : modes) {
-        const Real Kx = Real{2} * PI * static_cast<Real>(mode.kx) / Lx;
-        const Real Ky = Real{2} * PI * static_cast<Real>(mode.ky) / Ly;
-
-        const Real lambda = Kx * Kx + Ky * Ky;
-        const Real decay = std::exp(-alpha * lambda * time);
-
-        for(std::size_t i = 0; i < nx; ++i) {
-            const Real x = x_min + static_cast<Real>(i) * dx;
-
-            for(std::size_t j = 0; j < ny; ++j) {
-                const Real y = y_min + static_cast<Real>(j) * dy;
-
-                exact(i, j) += mode.amplitude * std::cos(Kx * x + Ky * y + mode.phase) * decay;
-            }
-        }
-    }
-
-    return exact;
-}
-
-
 bool approx_equal_real_grid(
-    const Grid2D<Real>& expected,
-    const Grid2D<Real>& actual,
-    Real abs_tol,
-    Real rel_tol
-) {
+    const Grid2D<Real>& expected, const Grid2D<Real>& actual, Real abs_tol, Real rel_tol){
+
     if(expected.nx() != actual.nx() || expected.ny() != actual.ny()) {
         return false;
     }
@@ -125,12 +75,8 @@ bool approx_equal_real_grid(
 
 
 void print_real_grid_failure_report(
-    const std::string& test_name,
-    const Grid2D<Real>& expected,
-    const Grid2D<Real>& actual,
-    Real abs_tol,
-    Real rel_tol
-) {
+    const std::string& test_name, const Grid2D<Real>& expected, const Grid2D<Real>& actual, Real abs_tol, Real rel_tol){
+        
     std::cout << "[FAIL] " << test_name << "\n";
 
     if(expected.nx() != actual.nx() || expected.ny() != actual.ny()) {
@@ -393,7 +339,7 @@ int main() {
         bool ok = snapshots.size() == cfg.output_times.size();
 
         for(std::size_t t_index = 0; t_index < cfg.output_times.size(); ++t_index) {
-            Grid2D<Real> expected = make_exact_multi_fourier_solution_grid(
+            Grid2D<Real> expected = make_exact_fourier_mode_solution(
                 cfg.Lx, cfg.Ly, cfg.nx, cfg.ny,
                 modes,
                 cfg.alpha, cfg.output_times[t_index]

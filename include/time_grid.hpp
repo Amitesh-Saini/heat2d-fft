@@ -32,13 +32,3 @@
 //   - t_start and t_end finite, t_start >= 0, t_end >= t_start,
 //   - num_snapshots >= 1.
 RealVec make_uniform_time_grid(Real t_start, Real t_end, std::size_t num_snapshots);
-
-// Validates an explicit output-time vector against the solver's
-// requirements, so that bad time grids fail at configuration time rather
-// than inside the solver:
-//   - nonempty,
-//   - every entry finite and nonnegative,
-//   - sorted in nondecreasing order.
-//
-// Throws std::invalid_argument on the first violation found.
-void validate_time_grid(const RealVec& times);

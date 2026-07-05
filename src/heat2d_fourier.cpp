@@ -32,6 +32,7 @@ const Heat2DConfig& Heat2DFourierSolver::config() const{
 
 
 void Heat2DFourierSolver::validate_config() const{
+    
     if(config_.nx < 2 || config_.ny < 2){
         throw std::invalid_argument("Heat2DConfig: nx and ny must be at least 2");
     }

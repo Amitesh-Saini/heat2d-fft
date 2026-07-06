@@ -1,0 +1,39 @@
+{
+    "schema_version": 1,
+  
+    "solver": {
+      "nx": 256,
+      "ny": 256,
+      "Lx": 2.0,
+      "Ly": 2.0,
+      "alpha": 1.0
+    },
+  
+    "fft_backend": "custom",
+  
+    "initial_condition": {
+      "type": "gaussian",
+      "amplitude": 1.0,
+      "sigma": 0.2,
+      "image_radius_x": 1,
+      "image_radius_y": 1
+    },
+  
+    "time": {
+      "mode": "uniform",
+      "t_start": 0.0,
+      "t_end": 0.5,
+      "num_snapshots": 50
+    },
+  
+    "output": {
+      "output_path": "output/heat_gaussian.h5",
+      "overwrite": false,
+      "gzip_level": 4
+    },
+  
+    "diagnostics": {
+      "enabled": true,
+      "compute_analytic_error": false
+    }
+  }

@@ -62,6 +62,13 @@ public:
     // input configuration).
     void write_string(const std::string& dataset_name, const std::string& text);
 
+    // Creates a group (e.g. "/diagnostics", "/error"). Datasets can then be
+    // written into it with a path like "/diagnostics/mean". HDF5 does not
+    // auto-create intermediate groups with default link properties, so any
+    // group must exist before a dataset inside it is created.
+    // Throws std::runtime_error on HDF5 failure or if the group already exists.
+    void create_group(const std::string& group_name);
+
     // Writes string / Real attributes on the root group. Used for
     // provenance (git commit, compiler, timestamp, ...) and run summary
     // values (wall time).

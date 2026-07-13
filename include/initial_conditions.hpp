@@ -73,6 +73,21 @@ void validate_grid_spec_2d(Real Lx, Real Ly, std::size_t nx, std::size_t ny, con
 std::vector<FourierMode2D> make_default_fourier_modes();
 
 
+// Builds the periodic coordinate vector for one axis:
+//
+//     x_i = -L/2 + i * L/n,   i = 0, ..., n-1
+//
+// The periodic endpoint is excluded: the grid spans [-L/2, L/2) with spacing
+// L/n, so the last point sits one step short of +L/2. This is the same
+// convention every initial-condition generator uses internally; exposing it
+// here lets the output writer store the physical coordinates alongside the
+// field data.
+//
+// Requires n >= 2 and L finite and positive; throws std::invalid_argument
+// otherwise.
+RealVec make_periodic_coordinates(Real L, std::size_t n);
+
+
 // Builds a truncated periodic image-sum Gaussian on the periodic rectangular
 // domain [-Lx/2, Lx/2) x [-Ly/2, Ly/2).
 //

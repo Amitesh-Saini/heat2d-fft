@@ -53,7 +53,8 @@ struct RunProvenance {
 RunProvenance make_run_provenance(const RunConfig& config);
 
 
-class SnapshotWriter {
+class SnapshotWriter{
+    
 public:
     // Creates the output file (honoring config.output.overwrite) and
     // immediately writes /config_json and the provenance attributes, so
@@ -86,8 +87,11 @@ public:
     // destructor closes the file but does not substitute for finalize.
     void finalize(double wall_time_seconds);
 
+    
+
 private:
     Hdf5File file_;
+    int gzip_level_ = 4;
     std::size_t expected_snapshots_ = 0;
     std::vector<SnapshotDiagnostics> diagnostics_;
     RealVec analytic_errors_;

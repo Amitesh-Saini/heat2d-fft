@@ -12,28 +12,28 @@
     "fft_backend": "custom",
   
     "initial_condition": {
-      "type": "gaussian",
+      "type": "single_fourier_mode",
+      "kx": 2,
+      "ky": 1,
       "amplitude": 1.0,
-      "sigma": 0.2,
-      "image_radius_x": 1,
-      "image_radius_y": 1
+      "phase": 0.0
     },
   
     "time": {
       "mode": "uniform",
       "t_start": 0.0,
-      "t_end": 0.05,
-      "num_snapshots": 50
+      "t_end": 0.15,
+      "num_snapshots": 60
     },
   
     "output": {
-      "output_path": "output/data/heat_gaussian.h5",
+      "output_path": "output/data/heat_single_mode.h5",
       "overwrite": true,
       "gzip_level": 4
     },
   
     "diagnostics": {
       "enabled": true,
-      "compute_analytic_error": false
+      "compute_analytic_error": true
     }
   }

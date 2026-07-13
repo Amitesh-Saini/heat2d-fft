@@ -269,6 +269,20 @@ if(HEAT2D_BUILD_TESTS)
 
     add_test(NAME test_diagnostics COMMAND test_diagnostics)
 
+    # Test executable: HDF5 writer (layout convention + hyperslab offsets)
+    # Writes probe.h5 into the working directory; scripts/verify_probe.py
+    # reads that file back with h5py to check the cross-language contract.
+    add_executable(test_hdf5_writer
+        tests/test_hdf5_writer.cpp
+    )
+
+    target_link_libraries(test_hdf5_writer
+        PRIVATE
+            heat2d_fft_core
+    )
+
+    add_test(NAME test_hdf5_writer COMMAND test_hdf5_writer)
+
     # New tests can be added once implemented, following the same pattern:
     #   - tests/test_time_grid.cpp
     #   - tests/test_config_io.cpp   (valid / missing key / unknown key / bad value)

@@ -26,6 +26,25 @@ std::vector<FourierMode2D> make_default_fourier_modes() {
     };
 }
 
+RealVec make_periodic_coordinates(Real L, std::size_t n) {
+
+    if(n < 2) throw std::invalid_argument("make_periodic_coordinates: n must be at least 2");
+
+    if(!std::isfinite(L) || L <= Real{0}) throw std::invalid_argument("make_periodic_coordinates: L must be finite and positive");
+
+    const Real dx = L / static_cast<Real>(n);
+    const Real origin = -L / Real{2};
+
+    RealVec coordinates(n);
+
+    for(std::size_t i = 0; i < n; ++i){
+        
+        coordinates[i] = origin + static_cast<Real>(i) * dx;
+    }
+
+    return coordinates;
+}
+
 
 void validate_grid_spec_2d(Real Lx, Real Ly, std::size_t nx, std::size_t ny, const ValidationConfig& validation){
 

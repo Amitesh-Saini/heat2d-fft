@@ -1,0 +1,38 @@
+{
+    "schema_version": 1,
+  
+    "solver": {
+      "nx": 256,
+      "ny": 256,
+      "Lx": 2.0,
+      "Ly": 2.0,
+      "alpha": 1.0
+    },
+  
+    "fft_backend": "custom",
+  
+    "initial_condition": {
+      "type": "hot_square",
+      "amplitude": 1.0,
+      "width_x": 0.6,
+      "width_y": 0.6
+    },
+  
+    "time": {
+      "mode": "uniform",
+      "t_start": 0.0,
+      "t_end": 0.06,
+      "num_snapshots": 60
+    },
+  
+    "output": {
+      "output_path": "output/data/heat_hot_square.h5",
+      "overwrite": true,
+      "gzip_level": 4
+    },
+  
+    "diagnostics": {
+      "enabled": true,
+      "compute_analytic_error": false
+    }
+  }

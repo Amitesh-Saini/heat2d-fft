@@ -9,7 +9,7 @@
       "alpha": 1.0
     },
   
-    "fft_backend": "custom",
+    "fft_backend": "fftw",
   
     "initial_condition": {
       "type": "multi_fourier_mode",
@@ -31,7 +31,7 @@
     },
   
     "output": {
-      "output_path": "output/data/heat_multi_mode.h5",
+      "output_path": "output/data/fftw_heat_multi_mode.h5",
       "overwrite": true,
       "gzip_level": 4
     },

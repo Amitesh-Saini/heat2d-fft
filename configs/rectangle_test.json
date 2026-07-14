@@ -2,9 +2,9 @@
     "schema_version": 1,
   
     "solver": {
-      "nx": 256,
+      "nx": 512,
       "ny": 256,
-      "Lx": 2.0,
+      "Lx": 4.0,
       "Ly": 2.0,
       "alpha": 1.0
     },
@@ -14,7 +14,7 @@
     "initial_condition": {
       "type": "gaussian",
       "amplitude": 1.0,
-      "sigma": 0.2,
+      "sigma": 0.3,
       "image_radius_x": 1,
       "image_radius_y": 1
     },
@@ -22,18 +22,18 @@
     "time": {
       "mode": "uniform",
       "t_start": 0.0,
-      "t_end": 0.05,
-      "num_snapshots": 50
+      "t_end": 0.06,
+      "num_snapshots": 40
     },
   
     "output": {
-      "output_path": "output/data/heat_gaussian.h5",
+      "output_path": "output/data/heat_rect.h5",
       "overwrite": true,
       "gzip_level": 4
     },
   
     "diagnostics": {
       "enabled": true,
-      "compute_analytic_error": true
+      "compute_analytic_error": false
     }
   }

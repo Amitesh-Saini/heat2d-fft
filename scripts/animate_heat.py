@@ -113,18 +113,17 @@ def main():
     # Figures are filed by initial-condition type, read from the run file
     # itself, so a run's output always lands in the right folder without the
     # caller having to specify it.
-    outdir = os.path.join(args.outdir, run.ic_type)
-    os.makedirs(outdir, exist_ok=True)
-
     stem = os.path.splitext(os.path.basename(args.path))[0]
 
+    outdir = os.path.join(args.outdir, run.ic_type, stem)
+    os.makedirs(outdir, exist_ok=True)
+
     if args.gif:
-        out_path = os.path.join(outdir, f"{stem}_animation.gif")
+        out_path = os.path.join(outdir, "animation.gif")
         writer = PillowWriter(fps=args.fps)
     else:
-        out_path = os.path.join(outdir, f"{stem}_animation.mp4")
+        out_path = os.path.join(outdir, "animation.mp4")
         writer = FFMpegWriter(fps=args.fps, bitrate=2400)
-
     try:
         animation.save(out_path, writer=writer, dpi=args.dpi)
     except (FileNotFoundError, RuntimeError) as error:

@@ -34,6 +34,6 @@
   
     "diagnostics": {
       "enabled": true,
-      "compute_analytic_error": true
+      "compute_analytic_error": false
     }
   }

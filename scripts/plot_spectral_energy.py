@@ -168,11 +168,12 @@ def main():
     fig.text(0.01, 0.01, provenance_label(run), fontsize=7, color="0.4")
     fig.tight_layout()
 
-    outdir = os.path.join(args.outdir, run.ic_type)
+    stem = os.path.splitext(os.path.basename(args.path))[0]
+
+    outdir = os.path.join(args.outdir, run.ic_type, stem)
     os.makedirs(outdir, exist_ok=True)
 
-    stem = os.path.splitext(os.path.basename(args.path))[0]
-    out_path = os.path.join(outdir, f"{stem}_spectral_energy.png")
+    out_path = os.path.join(outdir, "spectral_energy.png")
 
     fig.savefig(out_path, dpi=150)
     print(f"wrote {out_path}")

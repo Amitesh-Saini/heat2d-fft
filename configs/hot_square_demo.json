@@ -2,26 +2,26 @@
     "schema_version": 1,
   
     "solver": {
-      "nx": 256,
-      "ny": 256,
+      "nx": 512,
+      "ny": 512,
       "Lx": 2.0,
       "Ly": 2.0,
-      "alpha": 1.0
+      "alpha": 5.0
     },
   
     "fft_backend": "custom",
   
     "initial_condition": {
       "type": "hot_square",
-      "amplitude": 1.0,
-      "width_x": 0.6,
-      "width_y": 0.6
+      "amplitude": 6.0,
+      "width_x": 1.0,
+      "width_y": 1.0
     },
   
     "time": {
       "mode": "uniform",
       "t_start": 0.0,
-      "t_end": 0.06,
+      "t_end": 0.05,
       "num_snapshots": 60
     },
   

@@ -2,8 +2,8 @@
     "schema_version": 1,
   
     "solver": {
-      "nx": 256,
-      "ny": 256,
+      "nx": 1024,
+      "ny": 1024,
       "Lx": 2.0,
       "Ly": 2.0,
       "alpha": 1.0
@@ -14,12 +14,9 @@
     "initial_condition": {
       "type": "multi_fourier_mode",
       "modes": [
-        { "kx": 1,  "ky": 0,  "amplitude": 1.0,  "phase": 1.5707963267948966 },
-        { "kx": 0,  "ky": 1,  "amplitude": 0.8,  "phase": 0.0 },
-        { "kx": 3,  "ky": 2,  "amplitude": 0.5,  "phase": 0.0 },
-        { "kx": -2, "ky": 5,  "amplitude": 0.4,  "phase": 1.5707963267948966 },
-        { "kx": 8,  "ky": 8,  "amplitude": 0.3,  "phase": 0.0 },
-        { "kx": 16, "ky": -4, "amplitude": 0.2,  "phase": 0.0 }
+        { "kx": 1,  "ky": 0,  "amplitude": 1.0,  "phase": 0.0 },
+        { "kx": 0,  "ky": 1,  "amplitude": 1.0,  "phase": 0.0 },
+        { "kx": 1,  "ky": 1,  "amplitude": 1.0,  "phase": 0.0 }
       ]
     },
   
@@ -31,7 +28,7 @@
     },
   
     "output": {
-      "output_path": "output/data/heat_multi_mode.h5",
+      "output_path": "output/data/mul.h5",
       "overwrite": true,
       "gzip_level": 4
     },

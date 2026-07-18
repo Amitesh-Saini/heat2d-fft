@@ -153,11 +153,12 @@ def main():
     fig.canvas.mpl_connect("motion_notify_event", on_mouse_move)
 
     # --- save, filed by IC type, matching the other plotting scripts --------
-    outdir = os.path.join(args.outdir, run.ic_type)
+    stem = os.path.splitext(os.path.basename(args.path))[0]
+
+    outdir = os.path.join(args.outdir, run.ic_type, stem)
     os.makedirs(outdir, exist_ok=True)
 
-    stem = os.path.splitext(os.path.basename(args.path))[0]
-    out_path = os.path.join(outdir, f"{stem}_diagnostics.png")
+    out_path = os.path.join(outdir, "diagnostics.png")
 
     fig.savefig(out_path, dpi=150)
     print(f"wrote {out_path}")

@@ -148,7 +148,7 @@ Grid2D<Real> make_hot_square_ic(
 
     if(!std::isfinite(amplitude)) throw std::invalid_argument("make_hot_square_ic: amplitude must be finite");
 
-    const Real default_smooth_width_x = std::min(Real{3} * dx, Real{0.10} * wx);
+    const Real default_smooth_width_x = std::min(Real{3} * dx, Real{0.10} * wx); // 0.011
     const Real default_smooth_width_y = std::min(Real{3} * dy, Real{0.10} * wy);
 
     const Real smooth_width_x_value = smooth_width_x.value_or(default_smooth_width_x);

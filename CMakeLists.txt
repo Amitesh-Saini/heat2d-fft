@@ -11,6 +11,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(heat2d_fft LANGUAGES CXX)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -67,6 +71,13 @@ if(NOT HEAT2D_GIT_COMMIT)
     set(HEAT2D_GIT_COMMIT "unknown")
 endif()
 
+# CMake keeps optimization flags in the per-configuration variable
+# (CMAKE_CXX_FLAGS_RELEASE / _DEBUG), not in the base CMAKE_CXX_FLAGS.
+# Combine both so provenance records the flags a run was actually built with.
+set(HEAT2D_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}")
+
+message(STATUS "HEAT2D_CXX_FLAGS = '${HEAT2D_CXX_FLAGS}'")
+
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/build_info.hpp.in
     ${CMAKE_CURRENT_BINARY_DIR}/generated/build_info.hpp
@@ -94,7 +105,6 @@ add_library(heat2d_fft_core
     src/wavenumbers.cpp
     src/initial_conditions.cpp
     src/heat2d_fourier.cpp
-    src/io_csv.cpp
 
     # New architecture/output/config files
     src/run_config.cpp

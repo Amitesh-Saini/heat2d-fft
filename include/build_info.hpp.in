@@ -9,7 +9,7 @@ namespace build_info {
 
 inline constexpr const char* git_commit     = "@HEAT2D_GIT_COMMIT@";
 inline constexpr const char* compiler       = "@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@";
-inline constexpr const char* compiler_flags = "@CMAKE_CXX_FLAGS@";
+inline constexpr const char* compiler_flags = "@HEAT2D_CXX_FLAGS@";
 inline constexpr const char* build_type     = "@CMAKE_BUILD_TYPE@";
 
 } // namespace build_info

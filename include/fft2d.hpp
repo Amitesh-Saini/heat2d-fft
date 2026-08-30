@@ -13,3 +13,9 @@
 void fft_2d_inplace(Grid2D<Complex>& field);
 void ifft_2d_inplace(Grid2D<Complex>& field);
 
+void fft_2d_row_inplace(Grid2D<Complex>& field);
+void fft_2d_col_inplace(Grid2D<Complex>& field);
+
+void ifft_2d_col_inplace(Grid2D<Complex>& field);
+void ifft_2d_row_inplace(Grid2D<Complex>& field);
+

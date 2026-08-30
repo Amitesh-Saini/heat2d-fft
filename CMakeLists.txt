@@ -73,8 +73,15 @@ endif()
 
 # CMake keeps optimization flags in the per-configuration variable
 # (CMAKE_CXX_FLAGS_RELEASE / _DEBUG), not in the base CMAKE_CXX_FLAGS.
-# Combine both so provenance records the flags a run was actually built with.
-set(HEAT2D_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}")
+# Those variable names are upper case, while CMAKE_BUILD_TYPE is whatever
+# case the user wrote, so the build type is upper-cased before the lookup.
+# Without that, ${CMAKE_CXX_FLAGS_Release} expands to nothing and provenance
+# records no flags at all.
+string(TOUPPER "${CMAKE_BUILD_TYPE}" HEAT2D_BUILD_TYPE_UPPER)
+
+set(HEAT2D_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${HEAT2D_BUILD_TYPE_UPPER}}")
+
+message(STATUS "HEAT2D_CXX_FLAGS = '${HEAT2D_CXX_FLAGS}'")
 
 message(STATUS "HEAT2D_CXX_FLAGS = '${HEAT2D_CXX_FLAGS}'")
 
@@ -90,6 +97,9 @@ configure_file(
 
 option(HEAT2D_BUILD_TESTS "Build test executables" ON)
 option(HEAT2D_BUILD_BENCHMARKS "Build benchmark executables" ON)
+option(HEAT2D_BUILD_TESTS "Build test executables" ON)
+option(HEAT2D_BUILD_BENCHMARKS "Build benchmark executables" ON)
+option(HEAT2D_ENABLE_TIMING "Enable in-solver region timing" OFF)
 
 # ------------------------------------------------------------
 # Core numerical library
@@ -105,6 +115,7 @@ add_library(heat2d_fft_core
     src/wavenumbers.cpp
     src/initial_conditions.cpp
     src/heat2d_fourier.cpp
+    src/timing_registry.cpp
 
     # New architecture/output/config files
     src/run_config.cpp
@@ -127,6 +138,14 @@ target_link_libraries(heat2d_fft_core
         HDF5::HDF5
         nlohmann_json::nlohmann_json
 )
+
+# In-solver region timing. The annotations in the solver compile to nothing
+# unless this is defined, so a normal build carries no instrumentation.
+# PUBLIC so the benchmark targets see the same definition and
+# timing::enabled() agrees across the whole build.
+if(HEAT2D_ENABLE_TIMING)
+    target_compile_definitions(heat2d_fft_core PUBLIC HEAT2D_ENABLE_TIMING)
+endif()
 
 # ------------------------------------------------------------
 # Main executable
@@ -305,30 +324,45 @@ endif()
 # ------------------------------------------------------------
 
 if(HEAT2D_BUILD_BENCHMARKS)
-    add_executable(bench_fft1d
-        benchmarks/bench_fft1d.cpp
+
+    # Shared benchmark machinery: timing helpers, FFTW plans, models, and the
+    # CSV writers. The test utils are pulled in for their error metrics.
+    add_library(heat2d_bench
+        benchmarks/bench_common.cpp
+        benchmarks/bench_csv.cpp
+        tests/1D_test_utils.cpp
+        tests/2D_test_utils.cpp
     )
 
-    target_link_libraries(bench_fft1d
-        PRIVATE
+    target_include_directories(heat2d_bench
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_link_libraries(heat2d_bench
+        PUBLIC
             heat2d_fft_core
     )
 
-    add_executable(bench_fft2d
-        benchmarks/bench_fft2d.cpp
+    # Transform benchmarks: 1D FFT/DFT/FFTW, 2D scaling, aspect pair.
+    add_executable(bench_transforms
+        benchmarks/bench_transforms.cpp
     )
 
-    target_link_libraries(bench_fft2d
+    target_link_libraries(bench_transforms
         PRIVATE
-            heat2d_fft_core
+            heat2d_bench
     )
 
-    add_executable(bench_heat2d
-        benchmarks/bench_heat2d.cpp
+
+    add_executable(bench_solver
+        benchmarks/bench_solver.cpp
     )
 
-    target_link_libraries(bench_heat2d
+    target_link_libraries(bench_solver
         PRIVATE
-            heat2d_fft_core
+            heat2d_bench
     )
+
 endif()

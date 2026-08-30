@@ -58,10 +58,11 @@ output/figures/*
 !output/data/.gitkeep
 !output/figures/.gitkeep
 
-# Benchmark CSV output
-*.csv
+# Benchmark output
+benchmarks/results/
 
 # Python
 __pycache__/
 *.pyc
-.ipynb_checkpoints/
+.ipynb_checkpoints/compile_commands.json
+compile_commands.json

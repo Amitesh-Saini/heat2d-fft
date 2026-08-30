@@ -22,6 +22,16 @@
 
 #include "grid2d.hpp"
 #include "types.hpp"
+#include "timing_registry.hpp"
+
+namespace heat2d_regions {
+ 
+const char* const forward_fft = "forward_fft";
+const char* const spectral_copy = "spectral_copy";
+const char* const decay = "decay";
+const char* const inverse_fft = "inverse_fft";
+ 
+} // namespace heat2d_regions
 
 
 struct Heat2DConfig{

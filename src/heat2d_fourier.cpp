@@ -6,6 +6,7 @@
 #include <cmath>
 #include <stdexcept>
 
+
 // heat2d_fourier.cpp
 // Responsibility:
 //   Implementation of the 2D Fourier spectral solver for the periodic 2D
@@ -111,20 +112,38 @@ Grid2D<Real> Heat2DFourierSolver::make_snapshot_at_time(
         
         throw std::invalid_argument("Heat2DFourierSolver::make_snapshot_at_time: squared wavenumber grid shape does not match solver config");
     }
+
+       Grid2D<Complex> spectral_coefficients(config_.nx, config_.ny);
     
-    Grid2D<Complex> spectral_coefficients = initial_spectral_coefficients;
+    {
+
+        HEAT2D_TIME_REGION(heat2d_regions::spectral_copy);
+
+        spectral_coefficients = initial_spectral_coefficients; 
+
+    }
+ 
     Grid2D<Real> snapshot(config_.nx, config_.ny);
 
-    for(std::size_t i = 0; i < spectral_coefficients.nx(); ++i){
+    {
+        HEAT2D_TIME_REGION(heat2d_regions::decay);
 
-        for(std::size_t j = 0; j < spectral_coefficients.ny(); ++j){
+        for(std::size_t i = 0; i < spectral_coefficients.nx(); ++i){
 
-            Real decay = std::exp(- config_.alpha * squared_wavenumbers(i,j) * time);
-            spectral_coefficients(i,j) *= decay;
+            for(std::size_t j = 0; j < spectral_coefficients.ny(); ++j){
+
+                Real decay = std::exp(- config_.alpha * squared_wavenumbers(i,j) * time);
+                spectral_coefficients(i,j) *= decay;
+            }
         }
     }
 
-    ifft_2d_inplace(spectral_coefficients);
+    {
+        HEAT2D_TIME_REGION(heat2d_regions::inverse_fft);
+
+        ifft_2d_inplace(spectral_coefficients);
+
+    }
 
     for(std::size_t i = 0; i < snapshot.nx(); ++i){
 
@@ -157,7 +176,12 @@ std::vector<Grid2D<Real>> Heat2DFourierSolver::solve(){
         }
     }
 
-    fft_2d_inplace(initial_spectral_coefficients);
+    {
+        HEAT2D_TIME_REGION(heat2d_regions::forward_fft);
+
+        fft_2d_inplace(initial_spectral_coefficients);
+
+    }
 
     RealVec kx = build_fourier_wavenumbers(config_.nx, config_.Lx);
     RealVec ky = build_fourier_wavenumbers(config_.ny, config_.Ly);

@@ -115,7 +115,7 @@ def main():
     ax.set_xlabel("time  t")
     ax.set_ylabel("value")
     ax.set_title(f"{run.ic_type}  {run.nx}x{run.ny}:  "
-                 "extrema and energy collapse onto the conserved mean")
+                 "extrema and energy approach the conserved mean")
     ax.legend(loc="best", fontsize=9)
     ax.grid(True, alpha=0.25)
 

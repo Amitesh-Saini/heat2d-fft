@@ -133,26 +133,34 @@ private:
 //
 // Columns:
 //   run_id, benchmark, nx, ny, num_snapshots, theoretical_bytes,
-//   peak_rss_bytes
+//   baseline_rss_bytes, peak_rss_bytes
 //
-// Peak RSS is a whole-process high-water mark, so the memory benchmark binary
-// is invoked once per grid size by the harness script and each invocation
-// contributes a single row. num_snapshots is recorded because the solver
-// holds every snapshot in memory at once, making the footprint scale with
-// snapshot count as well as grid size.
+// Unlike the other two writers this one opens in APPEND mode and emits the
+// header only when the file does not already exist.
+//
+// Peak resident set size is a whole-process high-water mark and never
+// decreases, so a single process sweeping a size ladder would report the
+// largest configuration's footprint on every row. The memory benchmark is
+// therefore invoked once per configuration by the harness script, and each
+// invocation contributes one row to a file the previous invocation created.
+// Truncating on open would leave only the last row.
 class MemoryCsvWriter {
-
+ 
 public:
-
+ 
+    // Opens path for appending. Writes the header only if the file did not
+    // exist, so repeated invocations accumulate rows under one header. The
+    // harness deletes the file before the first invocation of a session, so a
+    // fresh run does not pile onto the previous one.
     MemoryCsvWriter(const std::string& path, const run_context& context);
-
+ 
     MemoryCsvWriter(const MemoryCsvWriter&) = delete;
     MemoryCsvWriter& operator=(const MemoryCsvWriter&) = delete;
-
+ 
     void write(const Memory_Result& result);
-
+ 
 private:
-
+ 
     std::ofstream out_;
     const run_context& context_;
 };

@@ -105,7 +105,7 @@ def main():
     ax.set_xlabel("time  t")
     ax.set_ylabel("error magnitude")
     ax.set_title(f"{run.ic_type}  {run.nx}x{run.ny}:  "
-                 "validation error remains at machine precision")
+                 "Mean conservation remains near machine precision")
     ax.legend(loc="upper left", fontsize=9)
     ax.grid(True, which="both", alpha=0.25)
 

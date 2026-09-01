@@ -77,7 +77,9 @@
 #include "run_config.hpp"
 #include "timing_registry.hpp"
 #include "types.hpp"
-
+#include "bench_platform.hpp"
+#include "bench_metadata.hpp"
+#include "snapshot_writer.hpp"
 
 // One measured configuration. The analytic error is established once, before
 // any timing, and shared by every trial so the rows stay comparable.
@@ -88,6 +90,7 @@ struct configuration {
 
     InitialConditionParams ic;
     std::string ic_name;
+    std::size_t reps = 1;
 
     bool write_output = false;
     int gzip_level = 0;
@@ -104,7 +107,7 @@ struct job {
 };
 
 
-int main(){
+int main(int argc, char** argv){
 
     try{
 
@@ -114,9 +117,19 @@ int main(){
 
         run_context context;
 
-        context.run_id = "solver";
+        // Supplied by the harness so every file in a session shares one
+        // identifier. Defaulted for direct invocation during development.
+        context.run_id = (argc >= 2) ? argv[1] : "transforms";
         context.output_dir = "benchmarks/results";
         context.base_seed = 123456789;
+
+        context.machine = query_machine_info();
+
+        std::cout << context.machine.hostname
+                  << " / " << context.machine.os_name
+                  << " / " << context.machine.cpu_model << "\n";
+
+        context.build_provenance = make_run_provenance();
 
         std::filesystem::create_directories(context.output_dir);
 
@@ -129,29 +142,27 @@ int main(){
                       << "         -DHEAT2D_ENABLE_TIMING=ON for the profile.\n";
         }
 
-        // Repetition is carried entirely by trials: a solve at any benchmarked
-        // grid size is far above the timing floor, so reps are always 1 and no
-        // rep probe is needed.
-        //
-        // Seven rather than five, matching the transform suite. The median of
-        // five is fragile when the spread is wide, and solver jobs vary far
-        // more than the transform batches did: a single solve runs for
-        // hundreds of milliseconds to seconds, long enough for the machine's
-        // thermal state to matter.
+        // Seven trials, matching the transform suite.
         const std::size_t trials = 7;
-
-        // Cooldown between jobs, as a fraction of the job's own measured
-        // duration and capped so a long job cannot stall the sweep.
+ 
+        // Reps are batched only where a single solve is too short to measure
+        // cleanly. At 512 and above one solve runs for hundreds of
+        // milliseconds and repetition is carried by trials alone; at 128 a
+        // solve is about 29 ms, short enough that one scheduling interruption
+        // is a large fraction of it.
         //
-        // The transform suite did not need this: each measurement was a 50 ms
-        // batch, short enough that the machine stayed near steady state. Here
-        // the jobs are seconds long and run back to back, so without a gap the
-        // processor heats continuously and later jobs run throttled. Shuffling
-        // decorrelates that drift from problem size, but it does not remove
-        // the variance it adds, and the first run showed a 57 percent spread
-        // across trials at the largest grid.
-        const double cooldown_fraction = 0.5;
-        const std::uint64_t cooldown_cap_ns = 2'000'000'000;
+        // The floor is well below the 50 ms used for the transforms because a
+        // solver rep is far more expensive: clearing 200 ms at 128 takes
+        // about seven solves, while clearing it at 256 takes three.
+        const std::uint64_t solve_floor_ns = 200'000'000;
+        const std::size_t max_solve_reps = 16;
+ 
+        // The cooldown is retained at zero: the first run used a pause
+        // proportional to each job's duration on the theory that the spread
+        // was thermal. It was not. Closing background applications took the
+        // spread at 1024 from 55 percent to under 1 percent, and the pause
+        // changed nothing. Left here as a record of what was tried.
+        const std::uint64_t cooldown_ns_cap = 0;
 
         // -------------------------------------------------------------------
         // Physical setup, identical across every configuration
@@ -250,7 +261,7 @@ int main(){
         }
 
         // The same ladder with output, at two compression levels.
-        for(const int gzip_level : {0, 4}){
+        for(const int gzip_level : {0, 1, 4}){
 
             for(const std::size_t n : sizes_ladder){
 
@@ -339,6 +350,33 @@ int main(){
                         "bench_solver: analytic error exceeds tolerance");
                 }
             }
+
+
+            // Probe once, outside every timed region, and reuse the count for
+            // every trial of this configuration so its rows stay comparable.
+            {
+                std::vector<Grid2D<Real>> probe_snapshots;
+ 
+                const solver_timing probe =
+                    time_solve(initial_condition, solver_config, probe_snapshots);
+ 
+                if(probe.solve_time_ns >= solve_floor_ns){
+ 
+                    config.reps = 1;
+                }
+                else if(probe.solve_time_ns == 0){
+ 
+                    config.reps = max_solve_reps;
+                }
+                else{
+ 
+                    const std::uint64_t needed =
+                        (solve_floor_ns + probe.solve_time_ns - 1) / probe.solve_time_ns;
+ 
+                    config.reps = static_cast<std::size_t>(
+                        std::min(needed, static_cast<std::uint64_t>(max_solve_reps)));
+                }
+            }
         }
 
         // -------------------------------------------------------------------
@@ -398,9 +436,42 @@ int main(){
             const Grid2D<Real> initial_condition = make_initial_condition(run_config);
 
             std::vector<Grid2D<Real>> snapshots;
-
-            const solver_timing timing =
-                time_solve(initial_condition, solver_config, snapshots);
+ 
+            solver_timing timing;
+ 
+            if(config.reps == 1){
+ 
+                timing = time_solve(initial_condition, solver_config, snapshots);
+            }
+            else{
+ 
+                // Accumulate across the batch, then divide, so the recorded
+                // row describes one solve while the measurement itself ran
+                // long enough for interrupt noise to be a small fraction.
+                //
+                // The registry accumulates process-wide and time_solve clears
+                // it on entry, so each rep's phases have to be summed here
+                // rather than read once at the end.
+                for(std::size_t rep = 0; rep < config.reps; ++rep){
+ 
+                    const solver_timing one =
+                        time_solve(initial_condition, solver_config, snapshots);
+ 
+                    timing.solve_time_ns += one.solve_time_ns;
+                    timing.forward_transform_time_ns += one.forward_transform_time_ns;
+                    timing.spectral_copy_time_ns += one.spectral_copy_time_ns;
+                    timing.decay_time_ns += one.decay_time_ns;
+                    timing.inverse_transform_time_ns += one.inverse_transform_time_ns;
+                }
+ 
+                const std::uint64_t reps = static_cast<std::uint64_t>(config.reps);
+ 
+                timing.solve_time_ns /= reps;
+                timing.forward_transform_time_ns /= reps;
+                timing.spectral_copy_time_ns /= reps;
+                timing.decay_time_ns /= reps;
+                timing.inverse_transform_time_ns /= reps;
+            }
 
             Solver_Result result;
 
@@ -410,8 +481,8 @@ int main(){
             result.nx = config.size.nx;
             result.ny = config.size.ny;
             result.trial = item.trial;
-            result.reps_used = 1;
-
+            result.reps_used = config.reps;
+ 
             result.total_time_ns = timing.solve_time_ns;
             result.forward_transform_time_ns = timing.forward_transform_time_ns;
             result.spectral_copy_time_ns = timing.spectral_copy_time_ns;
@@ -443,23 +514,11 @@ int main(){
                 result.io_time_ns = io.io_time_ns;
                 result.finalize_time_ns = io.finalize_time_ns;
                 result.bytes_written = io.bytes_written;
+                result.gzip_level = config.gzip_level;
             }
 
             writer.write(result);
-
-            // Recorded so the terminal summary can report the spread, which is
-            // the number that says whether the cooldown is doing its job.
             observed[item.configuration_index].push_back(timing.solve_time_ns);
-
-            // The pause is outside every timed region and after the row is
-            // written, so a session interrupted during a cooldown has already
-            // saved its measurement.
-            const std::uint64_t cooldown_ns = std::min(
-                static_cast<std::uint64_t>(cooldown_fraction *
-                    static_cast<double>(timing.solve_time_ns)),
-                cooldown_cap_ns);
-
-            std::this_thread::sleep_for(std::chrono::nanoseconds(cooldown_ns));
         }
 
         // -------------------------------------------------------------------
@@ -502,6 +561,28 @@ int main(){
                       << "   max " << largest
                       << "   spread " << 100.0 * (largest - smallest) / middle << "%\n";
         }
+
+        // Written after the last row: a metadata file describing a run that
+        // did not finish would be misleading.
+        std::map<std::string, std::string> benchmark_config;
+
+        benchmark_config["trials"] = std::to_string(trials);
+        benchmark_config["sizes_ladder"] = "128, 256, 512, 1024";
+        benchmark_config["ic_compare_size"] = std::to_string(ic_compare_size);
+        benchmark_config["gzip_levels"] = "0, 1, 4";
+        benchmark_config["num_snapshots"] = std::to_string(time_spec.num_snapshots);
+        benchmark_config["t_start"] = std::to_string(time_spec.t_start);
+        benchmark_config["t_end"] = std::to_string(time_spec.t_end);
+        benchmark_config["alpha"] = std::to_string(alpha);
+        benchmark_config["Lx"] = std::to_string(Lx);
+        benchmark_config["Ly"] = std::to_string(Ly);
+        benchmark_config["solve_floor_ns"] = std::to_string(solve_floor_ns);
+        benchmark_config["max_solve_reps"] = std::to_string(max_solve_reps);
+        benchmark_config["configurations"] = std::to_string(configurations.size());
+        benchmark_config["jobs"] = std::to_string(jobs.size());
+
+        write_run_metadata(context.output_dir + "/solver_metadata.json",
+                           context, benchmark_config);
 
         std::cout << "\nwrote " << context.output_dir << "/solver_timings.csv\n";
     }

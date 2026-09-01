@@ -168,8 +168,23 @@ ax.errorbar(g["nx"], g["median"], yerr=[lower, upper],
             fmt="o-", color=BLUE, capsize=4, label="measured (median, min-max)")
 
 n = np.asarray(g["nx"], dtype=float)
-ax.plot(n, fit_reference(g["median"], n ** 2 * np.log2(n)),
-        ":", color="black", lw=1.2, label=r"$O(n^2\log_2 n)$ fitted")
+
+# The reference is fitted on n >= 256 but drawn across the whole range.
+#
+# At 128 the solve runs for tens of milliseconds, short enough that a single
+# scheduling interrupt is a large fraction of it: the spread there is roughly
+# 75 percent against under 1 percent at 1024. Including that point drags the
+# fitted constant and makes the reference look systematically low everywhere
+# else. Excluding it from the fit while still plotting it lets a reader see
+# both the trend and the point that does not follow it.
+fit_mask = n >= 256
+
+model = n ** 2 * np.log2(n)
+
+ratio = np.median(np.asarray(g["median"])[fit_mask] / model[fit_mask])
+
+ax.plot(n, ratio * model, ":", color="black", lw=1.2,
+        label=r"$O(n^2\log_2 n)$ fitted, $n \geq 256$")
 
 ax.set_xscale("log")
 ax.set_yscale("log")
@@ -325,48 +340,48 @@ if not io.empty:
     io["io_ms"] = io["io_time_ns"] / 1e6
     io["mb"] = io["bytes_written"] / (1024.0 * 1024.0)
 
-    # gzip level is not a column: it is recoverable from the byte count, since
-    # the uncompressed size is exactly nx*ny*snapshots*8 bytes.
-    io["uncompressed"] = io["nx"] * io["ny"] * 10 * 8
-    io["compressed"] = io["bytes_written"] < 0.95 * io["uncompressed"]
+    gio = io.groupby(["nx", "gzip_level"])[["total_ms", "io_ms", "mb"]] \
+    .median().reset_index()
 
-    gio = io.groupby(["nx", "compressed"])[["total_ms", "io_ms", "mb"]].median().reset_index()
+    levels = sorted(gio["gzip_level"].unique())
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.3))
 
     sizes = sorted(gio["nx"].unique())
     x = np.arange(len(sizes))
-    width = 0.2
 
-    for offset, compressed, label, colour in [
-            (-1.5, False, "compute", BLUE),
-            (-0.5, False, "I/O, gzip 0", GREY),
-            (0.5, True, "I/O, gzip 4", GREEN)]:
+    bars = [("compute", None, BLUE)] + [(f"I/O, gzip {int(level)}", level, colour)
+                                         
+    for level, colour in zip(levels, [GREY, ORANGE, GREEN])]
 
-        sub = gio[gio["compressed"] == compressed].set_index("nx")
+    width = 0.8 / len(bars)
 
-        column = "total_ms" if label == "compute" else "io_ms"
+    for index, (label, level, colour) in enumerate(bars):
 
-        values = [sub.loc[n, column] if n in sub.index else 0.0 for n in sizes]
+        offset = (index - (len(bars) - 1) / 2) * width
 
-        ax1.bar(x + offset * width, values, width, color=colour, label=label)
+        if level is None:
+            sub = gio[gio["gzip_level"] == levels[0]].set_index("nx")
+            values = [sub.loc[n, "total_ms"] for n in sizes]
+        else:
+            sub = gio[gio["gzip_level"] == level].set_index("nx")
+            values = [sub.loc[n, "io_ms"] for n in sizes]
+
+        ax1.bar(x + offset, values, width, color=colour, label=label)
 
     ax1.set_xticks(x)
     ax1.set_xticklabels([str(n) for n in sizes])
     ax1.set_yscale("log")
     ax1.set_xlabel("grid size $n$")
     ax1.set_ylabel("time (ms)")
-    ax1.set_title("Compute against I/O")
+    ax1.set_title("Compute against I/O\n(medians across seven trials)")
     ax1.grid(axis="x", visible=False)
     ax1.legend(loc="upper left")
 
-    for compressed, label, colour, style in [
-            (False, "gzip 0", GREY, "o-"),
-            (True, "gzip 4", GREEN, "s--")]:
+    for level, colour, style in zip(levels, [GREY, ORANGE, GREEN], ["o-", "s--", "^:"]):
 
-        sub = gio[gio["compressed"] == compressed].sort_values("nx")
-
-        ax2.loglog(sub["nx"], sub["mb"], style, color=colour, label=label)
+        sub = gio[gio["gzip_level"] == level].sort_values("nx")
+        ax2.loglog(sub["nx"], sub["mb"], style, color=colour,label=f"gzip {int(level)}")
 
     power_of_two_axis(ax2, sizes)
     ax2.set_xlabel("grid size $n$")
@@ -374,7 +389,7 @@ if not io.empty:
     ax2.set_title("On-disk size")
     ax2.legend(loc="upper left")
 
-    fig.suptitle("I/O times are page-cache write-back, not device throughput")
+    fig.suptitle("gzip costs ~16x the write time for 1.5x compression, at any level")    
     save(fig, "compute_vs_io")
 
     print("\ncompute against I/O (median ms) and file size (MiB):")
@@ -383,14 +398,9 @@ if not io.empty:
     # The bimodality that the median hides.
     print("\nI/O time spread per configuration (ms), showing the two modes:")
 
-    for (nx, compressed), group in io.groupby(["nx", "compressed"]):
-
+    for (nx, level), group in io.groupby(["nx", "gzip_level"]):
         values = np.sort(np.asarray(group["io_ms"]))
-
-        level = "gzip4" if compressed else "gzip0"
-
-        print(f"  n={nx:5d} {level}:  " +
-              "  ".join(f"{v:.0f}" for v in values))
+        print(f"  n={nx:5d} gzip{int(level)}:  " + "  ".join(f"{v:.0f}" for v in values))
 
 
 # ---------------------------------------------------------------------------

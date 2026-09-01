@@ -44,7 +44,7 @@ std::string current_utc_timestamp(){
 } // namespace
 
 
-RunProvenance make_run_provenance(const RunConfig& config){
+RunProvenance make_run_provenance(){
 
     RunProvenance provenance;
 
@@ -53,6 +53,15 @@ RunProvenance make_run_provenance(const RunConfig& config){
     provenance.compiler_flags = build_info::compiler_flags;
     provenance.build_type = build_info::build_type;
     provenance.timestamp_utc = current_utc_timestamp();
+
+    return provenance;
+}
+
+
+RunProvenance make_run_provenance(const RunConfig& config){
+
+    RunProvenance provenance = make_run_provenance();
+
     provenance.fft_backend = fft_backend_to_string(config.fft_backend);
 
     return provenance;

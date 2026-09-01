@@ -330,6 +330,8 @@ if(HEAT2D_BUILD_BENCHMARKS)
     add_library(heat2d_bench
         benchmarks/bench_common.cpp
         benchmarks/bench_csv.cpp
+        benchmarks/bench_metadata.cpp
+        benchmarks/bench_platform.cpp
         tests/1D_test_utils.cpp
         tests/2D_test_utils.cpp
     )
@@ -344,6 +346,10 @@ if(HEAT2D_BUILD_BENCHMARKS)
         PUBLIC
             heat2d_fft_core
     )
+
+    if(WIN32)
+        target_link_libraries(heat2d_bench PUBLIC psapi)
+    endif()
 
     # Transform benchmarks: 1D FFT/DFT/FFTW, 2D scaling, aspect pair.
     add_executable(bench_transforms
@@ -361,6 +367,15 @@ if(HEAT2D_BUILD_BENCHMARKS)
     )
 
     target_link_libraries(bench_solver
+        PRIVATE
+            heat2d_bench
+    )
+
+    add_executable(bench_memory
+        benchmarks/bench_memory.cpp
+    )
+
+    target_link_libraries(bench_memory
         PRIVATE
             heat2d_bench
     )

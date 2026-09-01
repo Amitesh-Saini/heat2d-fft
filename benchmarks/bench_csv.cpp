@@ -17,6 +17,7 @@
 #include <iomanip>
 #include <limits>
 #include <stdexcept>
+#include <filesystem>
 
 #include "run_config.hpp"
 
@@ -121,6 +122,7 @@ SolverCsvWriter::SolverCsvWriter(const std::string& path, const run_context& con
          << "io_time_ns,"
          << "finalize_time_ns,"
          << "bytes_written,"
+         << "gzip_level,"
          << "error\n";
 
     out_.flush();
@@ -168,6 +170,12 @@ void SolverCsvWriter::write(const Solver_Result& result){
 
     out_ << ',';
 
+    if(result.gzip_level.has_value()){
+        out_ << result.gzip_level.value();
+    }
+ 
+    out_ << ',';
+
     // Present only for Fourier-mode initial conditions, the only ones with a
     // closed form to compare against.
     if(result.error.has_value()){
@@ -185,39 +193,61 @@ void SolverCsvWriter::write(const Solver_Result& result){
 // ---------------------------------------------------------------------------
 
 MemoryCsvWriter::MemoryCsvWriter(const std::string& path, const run_context& context)
-    : out_(path), context_(context){
-
+    : context_(context){
+ 
+    // Checked before opening: opening in append mode creates the file, after
+    // which the existence test would always say yes and the header would
+    // never be written.
+    const bool existed = std::filesystem::exists(path);
+ 
+    out_.open(path, std::ios::app);
+ 
     if(!out_.is_open()){
-
+ 
         throw std::runtime_error("MemoryCsvWriter: failed to open file: " + path);
     }
-
+ 
     out_ << std::setprecision(std::numeric_limits<double>::max_digits10);
-
-    out_ << "run_id,"
-         << "benchmark,"
-         << "nx,"
-         << "ny,"
-         << "num_snapshots,"
-         << "theoretical_bytes,"
-         << "peak_rss_bytes\n";
-
-    out_.flush();
+ 
+    if(!existed){
+ 
+        out_ << "run_id,"
+             << "benchmark,"
+             << "nx,"
+             << "ny,"
+             << "num_snapshots,"
+             << "theoretical_bytes,"
+             << "baseline_rss_bytes,"
+             << "peak_rss_bytes\n";
+ 
+        out_.flush();
+    }
 }
-
-
+ 
+ 
 void MemoryCsvWriter::write(const Memory_Result& result){
-
+ 
     // No derived columns. The ratio of measured to theoretical is the point
-    // of this benchmark, but it is computed downstream from these two raw
-    // numbers rather than stored, so the definition lives in one place.
+    // of this benchmark, but it is computed downstream from the raw numbers
+    // rather than stored, so the definition lives in one place.
     out_ << context_.run_id << ','
          << benchmark_name_to_string(result.name) << ','
          << result.nx << ','
          << result.ny << ','
          << result.num_snapshots << ','
-         << result.theoretical_bytes << ','
-         << result.peak_rss_bytes << '\n';
-
+         << result.theoretical_bytes << ',';
+ 
+    if(result.baseline_rss_bytes.has_value()){
+        out_ << result.baseline_rss_bytes.value();
+    }
+ 
+    out_ << ',';
+ 
+    if(result.peak_rss_bytes.has_value()){
+        out_ << result.peak_rss_bytes.value();
+    }
+ 
+    out_ << '\n';
+ 
     out_.flush();
 }

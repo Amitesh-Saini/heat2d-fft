@@ -265,6 +265,12 @@ struct Solver_Result {
 
     std::optional<std::uint64_t> bytes_written;
 
+    // Compression level the output was written at. Present only on rows from
+    // runs that wrote output, and recorded rather than inferred: with more
+    // than two levels in the sweep the byte count no longer identifies which
+    // one produced it.
+    std::optional<int> gzip_level;
+
     // Relative L-infinity error against the analytic solution. Present only
     // for Fourier-mode initial conditions, which are the only ones with a
     // closed form.
@@ -276,26 +282,38 @@ struct Solver_Result {
 // Memory benchmark
 // ---------------------------------------------------------------------------
 
-// Peak RSS is a whole-process high-water mark, so the memory benchmark
-// binary is invoked once per grid size by the harness script. num_snapshots
-// is recorded because solve() holds every snapshot in memory at once, which
-// makes the footprint scale with snapshot count as well as grid size.
+// One measurement of a solve's memory footprint.
+//
+// The binary is invoked once per configuration, because peak resident set
+// size is a whole-process high-water mark: a process that swept several sizes
+// would report the largest one on every row.
+//
+// num_snapshots is recorded alongside the grid size because the solver holds
+// every snapshot in memory at once. The snapshot vector is the dominant term
+// in the footprint, so the model scales with snapshot count as well as with
+// grid area, and a sweep that varied both at once would measure neither.
 struct Memory_Result {
-
+ 
     Benchmark_name name = Benchmark_name::Memory_footprint;
-
+ 
     std::size_t nx = 0;
     std::size_t ny = 0;
     std::size_t num_snapshots = 0;
-
-    // Array working set only: sizeof(Complex) or sizeof(Real) times the
-    // point count times the number of simultaneously live grids.
+ 
+    // Array working set only: element size times point count times the number
+    // of simultaneously live grids, plus the accumulated snapshots.
     std::uint64_t theoretical_bytes = 0;
-
-    // Normalized to bytes at the point of measurement. ru_maxrss is
-    // kilobytes on Linux and bytes on macOS; Windows reports
-    // PeakWorkingSetSize in bytes.
-    std::uint64_t peak_rss_bytes = 0;
+ 
+    // Peak resident set before any solver array is allocated: the binary, its
+    // static data, the allocator's initial arena, and whatever the runtime
+    // brought in. The model does not include any of this, so subtracting it
+    // is what makes the comparison meaningful rather than systematically off
+    // by a constant.
+    std::optional<std::uint64_t> baseline_rss_bytes;
+ 
+    // Peak resident set after the solve, normalized to bytes at the point of
+    // measurement: ru_maxrss is kilobytes on Linux and bytes on macOS.
+    std::optional<std::uint64_t> peak_rss_bytes;
 };
 
 

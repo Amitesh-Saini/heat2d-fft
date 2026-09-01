@@ -48,6 +48,15 @@ struct RunProvenance {
     std::string fft_backend;     // "custom" or "fftw"
 };
 
+
+// Build provenance alone: the CMake-injected identity and the current time,
+// with fft_backend left empty.
+//
+// The benchmark executables use this. They measure the library directly
+// rather than running a configured simulation, so they have no RunConfig to
+// describe and no backend to name.
+RunProvenance make_run_provenance();
+
 // Collects provenance from the CMake-generated build_info header, the
 // current wall-clock time, and the configured FFT backend.
 RunProvenance make_run_provenance(const RunConfig& config);

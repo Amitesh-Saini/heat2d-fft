@@ -63,6 +63,9 @@
 #include "fft2d.hpp"
 #include "grid2d.hpp"
 #include "types.hpp"
+#include "bench_platform.hpp"
+#include "bench_metadata.hpp"
+#include "snapshot_writer.hpp"
 
 
 // One measured configuration. The error and the rep count are established
@@ -88,7 +91,7 @@ struct job {
 };
 
 
-int main(){
+int main(int argc, char** argv){
 
     try{
 
@@ -98,9 +101,23 @@ int main(){
 
         run_context context;
 
-        context.run_id = "slice";
+        // Supplied by the harness so every file in a session shares one
+        // identifier. Defaulted for direct invocation during development.
+        context.run_id = (argc >= 2) ? argv[1] : "transforms";
         context.output_dir = "benchmarks/results";
         context.base_seed = 123456789;
+
+        // Queried once at startup: hostname, OS, CPU model, and the cache
+        // sizes that annotate the cache-cliff plot. Recorded in the run
+        // metadata so a result can be attributed to the machine that produced
+        // it rather than to an unnamed laptop.
+        context.machine = query_machine_info();
+        std::cout << context.machine.hostname
+                  << " / " << context.machine.os_name
+                  << " / " << context.machine.cpu_model << "\n";
+
+        context.build_provenance = make_run_provenance();
+
         context.fftw_planner_flag = "FFTW_MEASURE";
 
         // create_directories succeeds silently when the directory already
@@ -489,6 +506,22 @@ int main(){
         // rather than a partial set that later sessions would only partly
         // benefit from.
         export_fftw_wisdom(wisdom_path);
+
+        // Written after the last row: a metadata file describing a run that
+        // did not finish would be misleading.
+        std::map<std::string, std::string> benchmark_config;
+
+        benchmark_config["trials"] = std::to_string(trials);
+        benchmark_config["safety_factor"] = std::to_string(safety_factor);
+        benchmark_config["sizes_1d"] = "8..32768 powers of two";
+        benchmark_config["sizes_1d_dft"] = "8..128 powers of two";
+        benchmark_config["sizes_2d"] = "16..4096 powers of two";
+        benchmark_config["sizes_aspect"] = "512x2048, 2048x512";
+        benchmark_config["configurations"] = std::to_string(configurations.size());
+        benchmark_config["jobs"] = std::to_string(jobs.size());
+
+        write_run_metadata(context.output_dir + "/transform_metadata.json",
+                           context, benchmark_config);
 
         std::cout << "wrote " << context.output_dir << "/transform_timings.csv\n";
     }

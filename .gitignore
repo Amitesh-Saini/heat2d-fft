@@ -59,7 +59,8 @@ output/figures/*
 !output/figures/.gitkeep
 
 # Benchmark output
-benchmarks/results/
+benchmarks/results/fftw_wisdom.dat
+benchmarks/results/**/*.pdf
 
 # Python
 __pycache__/

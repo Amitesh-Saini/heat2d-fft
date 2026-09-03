@@ -1,0 +1,49 @@
+{
+  "benchmark": {
+    "Lx": "2.000000",
+    "Ly": "2.000000",
+    "alpha": "1.000000",
+    "configurations": "19",
+    "gzip_levels": "0, 1, 4",
+    "ic_compare_size": "512",
+    "jobs": "133",
+    "max_solve_reps": "16",
+    "num_snapshots": "10",
+    "sizes_ladder": "128, 256, 512, 1024",
+    "solve_floor_ns": "200000000",
+    "t_end": "0.500000",
+    "t_start": "0.000000",
+    "trials": "7"
+  },
+  "build": {
+    "build_type": "Release",
+    "compiler": "AppleClang 21.0.0.21000101",
+    "compiler_flags": " -O3 -DNDEBUG",
+    "git_commit": "60f96ffe51540204f887b914f013eb664778bc7e",
+    "sizeof_real": 8,
+    "timing_instrumentation": true
+  },
+  "fftw": {
+    "planner_flag": "FFTW_MEASURE",
+    "wisdom_policy": "none"
+  },
+  "machine": {
+    "cpu": "Apple M1",
+    "hostname": "Amiteshs-MacBook-Air.local",
+    "l1d_bytes": 65536,
+    "l2_bytes": 4194304,
+    "l3_bytes": null,
+    "os": "macOS 26.5 (Darwin 25.5.0)"
+  },
+  "notes": {},
+  "output_dir": "benchmarks/results",
+  "policy": {
+    "base_seed": 123456789,
+    "max_reps": 100000,
+    "min_timed_ns": 50000000,
+    "single_call_ns": 1000000,
+    "warmup_reps": 1
+  },
+  "run_id": "20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air",
+  "written_utc": "2026-09-02T16:56:18Z"
+}

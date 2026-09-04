@@ -79,7 +79,7 @@ def make_run_id():
             stderr=subprocess.DEVNULL).decode().strip()
 
         dirty = subprocess.check_output(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--untracked-files=no"],
             stderr=subprocess.DEVNULL).decode().strip()
 
         if dirty:

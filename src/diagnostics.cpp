@@ -47,9 +47,13 @@ Real compute_l2_norm(const Grid2D<Real>& field, Real Lx, Real Ly){
 
 Real compute_min(const Grid2D<Real>& field){
 
-    Real min = Real{0};
+    const auto& raw_field = field.raw();
 
-    for(const auto& value :field.raw()){
+    if(raw_field.empty()) throw std::invalid_argument("compute_min: empty field");
+
+    Real min = raw_field[0];
+
+    for(const auto& value : raw_field){
 
         if(value < min) min = value;
     }
@@ -60,9 +64,14 @@ Real compute_min(const Grid2D<Real>& field){
 
 Real compute_max(const Grid2D<Real>& field){
 
-    Real max = Real{0};
+    const auto& raw_field = field.raw();
 
-    for(const auto& value :field.raw()){
+    if(raw_field.empty()) throw std::invalid_argument("compute_max: empty field");
+
+
+    Real max = raw_field[0];
+
+    for(const auto& value : raw_field){
 
         if(value > max) max = value;
     }

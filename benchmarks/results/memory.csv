@@ -1,8 +1,0 @@
-run_id,benchmark,nx,ny,num_snapshots,theoretical_bytes,baseline_rss_bytes,peak_rss_bytes
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,128,128,10,2234368,1638400,4685824
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,256,256,10,8925184,1638400,11124736
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,512,512,10,35676160,1638400,38027264
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,1024,1024,10,142655488,1638400,145129472
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,512,512,5,25190400,1638400,27475968
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,512,512,20,56647680,1638400,59097088
-20260902T165229Z_dcb0b54_Amiteshs-MacBook-Air,Memory_footprint,512,512,40,98590720,1638400,101203968
